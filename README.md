@@ -10,7 +10,11 @@ An AI-powered observability assistant that monitors simulated Kubernetes/Grafana
 - [Prerequisites](#prerequisites)
 - [Setup](#setup)
 - [Configuration](#configuration)
-- [Running the App](#running-the-app)
+- [CLI Commands](#cli-commands)
+- [Mock Log Source System](#mock-log-source-system)
+  - [Log Source Abstraction](#log-source-abstraction)
+  - [Mock File Log Source](#mock-file-log-source)
+  - [Mock Log Generator](#mock-log-generator)
 - [Running Tests](#running-tests)
 - [Local LLM Integration (llama.cpp)](#local-llm-integration-llamacpp)
 - [OpenAI Integration](#openai-integration)
@@ -22,7 +26,7 @@ An AI-powered observability assistant that monitors simulated Kubernetes/Grafana
 
 This project is a **hackathon MVP** that demonstrates an AI-powered observability pipeline:
 
-1. **Log ingestion** — Currently uses mock/simulated logs (real Kubernetes, Grafana, and Prometheus integrations are planned).
+1. **Log ingestion** — Currently uses mock/simulated logs via a pluggable log source abstraction (real Kubernetes, Grafana Loki, and Prometheus integrations are planned).
 2. **Error detection** — Identifies error and critical severity log entries.
 3. **LLM analysis** — Sends log context to an LLM (local llama.cpp or OpenAI) which returns:
    - Root cause analysis
@@ -34,8 +38,9 @@ This project is a **hackathon MVP** that demonstrates an AI-powered observabilit
 
 - **Local-first**: Runs entirely on your machine with a local llama.cpp server.
 - **Minimal dependencies**: No LangChain, no CrewAI, no AutoGen — just clean Python with `asyncio`, `httpx`, and `pydantic`.
+- **Log source abstraction**: Swapping the log source (mock file → Kubernetes → Loki) is done by implementing one interface — downstream logic never changes.
 - **Provider abstraction**: Swapping the LLM backend is as simple as changing one environment variable.
-- **Mock-first development**: Full mock log generation for testing without any external infrastructure.
+- **Mock-first development**: Full mock log generation with streaming simulation for testing without any external infrastructure.
 
 ---
 
@@ -44,50 +49,44 @@ This project is a **hackathon MVP** that demonstrates an AI-powered observabilit
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    CLI (click)                       │
-│           python -m src simulate                     │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│              Mock Log Generator                      │
-│   mocks/generators/log_generator.py                  │
-│   Generates realistic K8s/Grafana-style logs         │
-└──────────────────────┬──────────────────────────────┘
-                       │  log_context (str)
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│              Provider Factory                        │
-│        src/providers/factory.py                      │
-│   Creates the correct LLM provider based on config   │
-└──────────────────────┬──────────────────────────────┘
-                       │
-          ┌────────────┴────────────┐
-          ▼                         ▼
-┌──────────────────┐    ┌──────────────────┐
-│  LlamaCppProvider│    │  OpenAiProvider  │
-│ src/providers/   │    │ src/providers/   │
-│ llama_cpp.py     │    │ openai.py        │
-│                  │    │                  │
-│ Calls local      │    │ Calls OpenAI     │
-│ llama.cpp server │    │ API (or any      │
-│ via OpenAI-compat│    │ compatible       │
-│ endpoint         │    │ endpoint)        │
-└──────────────────┘    └──────────────────┘
-          │                         │
-          ▼                         ▼
-┌─────────────────────────────────────────────────────┐
-│              AnalysisResult (dataclass)              │
-│  - root_cause: str                                   │
-│  - severity: str                                     │
-│  - remediation_suggestions: list[str]                │
-│  - preventive_actions: list[str]                     │
-└─────────────────────────────────────────────────────┘
+│  generate-logs | stream-logs | simulate             │
+└──────┬──────────────────────┬───────────────────────┘
+       │                      │
+       ▼                      ▼
+┌──────────────────┐  ┌──────────────────────────────┐
+│ Mock File Log    │  │  LLM Providers               │
+│ Source           │  │                              │
+│ src/core/        │  │  BaseLlmProvider (ABC)       │
+│ log_sources/     │  │   ├── LlamaCppProvider       │
+│                  │  │   └── OpenAiProvider         │
+│ - reads mock     │  │                              │
+│   files          │  │  Factory: create_llm_provider│
+│ - streams        │  │      (settings) -> provider  │
+│   appended lines │  │                              │
+│ - start/stop     │  └──────────────┬───────────────┘
+│   lifecycle      │                 │
+└──────────────────┘                 ▼
+       │                    ┌──────────────────┐
+       ▼                    │ AnalysisResult   │
+┌──────────────────┐        │ (dataclass)      │
+│ Mock Log         │        │ - root_cause     │
+│ Generator        │        │ - severity       │
+│ mocks/generators/│        │ - remediation    │
+│ log_generator.py │        │ - preventive     │
+└──────────────────┘        └──────────────────┘
+  Generates realistic
+  K8s-style logs with:
+  - tracebacks, HTTP errors,
+    DB failures, OOM kills,
+    pod restarts, retry fails
 ```
 
 ### Key Abstractions
 
-- **`BaseLlmProvider`** (`src/providers/base.py`): Abstract base class defining the `analyze(log_context: str) -> AnalysisResult` interface.
-- **`AnalysisResult`**: Frozen dataclass holding the structured LLM output.
+- **`BaseLogSource`** (`src/core/log_sources/base.py`): Abstract base class defining the `start()`, `stop()`, and async `stream()` interface. Every log source (mock file, Kubernetes, Loki) implements this.
+- **`MockFileLogSource`**: Reads mock files, writes new lines in a background task, and tails the file via an async generator.
+- **`BaseLlmProvider`** (`src/providers/base.py`): Abstract base class defining `analyze(log_context: str) -> AnalysisResult`.
+- **`AnalysisResult`**: Frozen dataclass holding structured LLM output.
 - **`create_llm_provider(settings)`**: Factory function that instantiates the correct provider based on `LLM_PROVIDER` in `.env`.
 
 ---
@@ -105,15 +104,18 @@ project/
 │   │   ├── __init__.py
 │   │   └── settings.py           # Pydantic Settings loaded from .env
 │   │
+│   ├── core/                     # Core business logic
+│   │   ├── __init__.py
+│   │   └── log_sources/          # Log source abstraction layer
+│   │       ├── base.py           # BaseLogSource ABC + LogLine dataclass
+│   │       └── mock_file_source.py  # Mock file-based log source
+│   │
 │   ├── providers/                # LLM provider implementations
 │   │   ├── __init__.py
 │   │   ├── base.py               # Abstract base class + AnalysisResult
 │   │   ├── llama_cpp.py          # Local llama.cpp provider
 │   │   ├── openai.py             # OpenAI API provider
 │   │   └── factory.py            # Provider creation factory
-│   │
-│   ├── core/                     # Core business logic (future)
-│   │   └── __init__.py
 │   │
 │   └── utils/                    # Utility functions (future)
 │       └── __init__.py
@@ -122,11 +124,13 @@ project/
 │   ├── __init__.py
 │   ├── unit/                     # Unit tests (no network calls)
 │   │   ├── __init__.py
-│   │   └── test_config.py        # Config loading + provider factory tests
+│   │   ├── test_config.py        # Config loading + provider factory tests
+│   │   └── test_log_sources.py   # Log generator + settings tests
 │   │
-│   └── integration/              # Integration tests (mock HTTP)
+│   └── integration/              # Integration tests (mock HTTP / file I/O)
 │       ├── __init__.py
-│       └── test_llm_pipeline.py  # End-to-end pipeline with mock server
+│       ├── test_llm_pipeline.py  # End-to-end pipeline with mock server
+│       └── test_log_sources.py   # Log source lifecycle + streaming tests
 │
 ├── mocks/                        # Mock/simulation resources
 │   ├── __init__.py
@@ -136,7 +140,7 @@ project/
 │   │
 │   └── generators/               # Log generation utilities
 │       ├── __init__.py
-│       └── log_generator.py      # Reusable mock log generator
+│       └── log_generator.py      # Reusable mock log generator + async streamer
 │
 ├── .env.example                  # Environment variable template
 ├── .gitignore                    # Git ignore rules
@@ -214,8 +218,11 @@ All settings are loaded from environment variables via `pydantic-settings`. The 
 | `OPENAI_API_KEY` | *(empty)* | OpenAI API key (required when using OpenAI) |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint URL |
 | `OPENAI_MODEL_NAME` | `gpt-4o` | Model name for OpenAI requests |
-| `MOCK_LOG_COUNT` | `50` | Number of mock log lines to generate |
-| `MOCK_LOG_SEVERITIES` | `info,warning,error,critical` | Comma-separated severity levels |
+| `MOCK_LOG_COUNT` | `50` | Number of mock log lines to generate per batch |
+| `MOCK_LOG_SEVERITIES` | `info,warn,error,critical` | Comma-separated severity levels |
+| `MOCK_LOG_DIR` | `mocks/logs` | Directory where mock log files are written |
+| `MOCK_LOG_INTERVAL` | `1.0` | Seconds between appended log batches during streaming |
+| `MOCK_LOG_SERVICES` | comma-separated list | Services to include in generated logs (see below) |
 
 ### Programmatic Configuration
 
@@ -224,45 +231,178 @@ You can also override settings in code:
 ```python
 from src.config.settings import Settings
 
-settings = Settings(llm_provider="openai", openai_api_key="sk-...")
+settings = Settings(
+    llm_provider="openai",
+    openai_api_key="sk-...",
+    mock_log_count=200,
+    mock_log_interval=0.5,
+)
 ```
 
 ---
 
-## Running the App
+## CLI Commands
 
-### Simulate and Analyze Mock Logs
+### `generate-logs` — Write a batch of mock logs to a file
 
-With the virtualenv activated, run:
+Generates realistic Kubernetes-style logs and writes them to a file:
 
 ```bash
-python -m src simulate
+# Generate default (50 lines) to mocks/logs/generated.log
+python -m src generate-logs
+
+# Custom count and output path
+python -m src generate-logs --count 200 -o /tmp/my-logs.log
+
+# Specific services and severities
+python -m src generate-logs \
+    --services "auth-service,payment-service,gateway" \
+    --severities "error,critical" \
+    --count 100
 ```
 
-This will:
-1. Generate mock log lines (default: 50)
-2. Display the first 500 characters of generated logs
-3. Send all logs to the configured LLM for analysis
-4. Print a formatted analysis result
+### `stream-logs` — Stream mock logs in real-time
 
-### Custom Options
+Two modes:
+
+**Mode 1: Full mock file source** (generates + streams):
 
 ```bash
-# Generate a specific number of log lines
-python -m src simulate --count 100
+# Stream for 15 seconds (default is 10s)
+python -m src stream-logs --duration 15
 
-# Override the LLM provider at runtime
-python -m src simulate --provider openai
+# Infinite mode (Ctrl+C to stop)
+python -m src stream-logs --duration 0
+```
 
-# Combine options
-python -m src simulate --count 200 --provider llama_cpp
+This starts a `MockFileLogSource` that writes mock logs to a file in the background and tails them in real-time, simulating a live production system.
+
+**Mode 2: Tail an existing file**:
+
+```bash
+# Tail a previously generated log file
+python -m src stream-logs --source-file mocks/logs/generated.log
+```
+
+### `simulate` — Generate mock logs and send to LLM for analysis
+
+The original command, now using the improved generator:
+
+```bash
+# Default simulation
+python -m src simulate
+
+# Custom count and provider override
+python -m src simulate --count 100 --provider openai
 ```
 
 ### CLI Help
 
 ```bash
 python -m src --help
+python -m src generate-logs --help
+python -m src stream-logs --help
 python -m src simulate --help
+```
+
+---
+
+## Mock Log Source System
+
+### Log Source Abstraction
+
+The `BaseLogSource` interface (`src/core/log_sources/base.py`) defines a universal contract for all log sources:
+
+```python
+class BaseLogSource(ABC):
+    @property
+    def name(self) -> str: ...
+
+    async def start(self) -> None: ...
+    async def stop(self) -> None: ...
+    async def stream(self):  # async generator yielding LogLine
+        ...
+```
+
+Every log source implements this interface, so downstream consumers (error detectors, LLM analyzers, dashboards) can treat all sources uniformly:
+
+```python
+source: BaseLogSource = MockFileLogSource(settings)
+# Later, swap in a real source without changing consumer code:
+# source = KubernetesLogSource(kube_config)
+
+await source.start()
+async for log_line in source.stream():
+    # Process each log line uniformly
+    await analyzer.analyze(log_line.text)
+await source.stop()
+```
+
+Future sources to implement:
+- `KubernetesLogSource` — tails `kubectl logs` or kubelet API
+- `LokiLogSource` — queries Grafana Loki via HTTP API
+- `PrometheusAlertSource` — ingests Prometheus alertmanager webhooks
+
+### Mock File Log Source
+
+The `MockFileLogSource` (`src/core/log_sources/mock_file_source.py`) is the default log source. It:
+
+1. **Writes** an initial batch of mock logs to a file on `start()`.
+2. **Appends** new batches periodically via a background `asyncio.Task`.
+3. **Streams** by tailing the file — reads new lines as they appear using file position tracking.
+
+Lifecycle:
+
+```python
+source = MockFileLogSource(settings)
+await source.start()       # Write initial batch + start background writer
+async for line in source.stream():  # Tail file, yield LogLine objects
+    print(line.text)
+await source.stop()        # Cancel background task, clean up
+```
+
+Key features:
+- Handles file truncation (restarts from beginning if file shrinks)
+- Thread-safe via asyncio event loop (no threading needed)
+- Configurable write interval via `MOCK_LOG_INTERVAL`
+
+### Mock Log Generator
+
+The generator (`mocks/generators/log_generator.py`) produces realistic Kubernetes/Grafana-style logs with:
+
+**Services**: `auth-service`, `payment-service`, `gateway`, `inventory-service`, `user-api`, `order-processor`, `notification-worker`, `cache-redis`
+
+**Severities & Messages**:
+| Severity | Examples |
+|---|---|
+| INFO | `GET /api/v1/users 200 OK (12ms)`, `Health check passed — all dependencies healthy`, `Cache hit ratio: 94.2%` |
+| WARN | `Response time exceeded 500ms threshold`, `Connection pool utilization at 82%`, `Circuit breaker half-open for inventory-service` |
+| ERROR | `Connection refused to database host db-primary:5432 — ECONNREFUSED`, `HTTP 503 from upstream service payment-service`, `Redis connection lost: READERR OOM command not allowed` |
+| CRITICAL | `Out of memory: killed process 12345 (java) total-vm:8234567kB`, `Pod crash-looping: OOMKilled in payment-service-7d4f`, `Network partition detected between zones us-east-1a and us-east-1b` |
+
+**Realistic details**:
+- Kubernetes pod names (e.g., `auth-service-5c8d7f9a2b`)
+- Full Python tracebacks on ERROR/CRITICAL entries
+- HTTP error codes, DB connection failures, retry attempts
+- OOM kills, disk space warnings, circuit breaker states
+- Realistic timestamps with jitter
+
+**API**:
+
+```python
+from mocks.generators.log_generator import (
+    generate_log_entries,   # Returns list[LogEntry]
+    generate_mock_logs_text,  # Returns multi-line string
+    stream_log_entries,     # Async generator for real-time simulation
+)
+
+# Batch generation
+entries = generate_log_entries(count=100, services=["auth-service", "gateway"])
+text = generate_mock_logs_text(count=50)
+
+# Real-time streaming (async)
+async for entry in stream_log_entries(count=50, interval=0.5):
+    print(entry.format())
 ```
 
 ---
@@ -292,8 +432,17 @@ coverage report
 
 ### Test Architecture
 
-- **Unit tests** (`tests/unit/`): Test configuration loading, provider factory creation, and settings validation. No network calls.
-- **Integration tests** (`tests/integration/`): Test the full analysis pipeline using a mocked HTTP server. Validates that logs flow through the provider and produce structured `AnalysisResult` objects.
+| Layer | Location | What it tests | Network calls? |
+|---|---|---|---|
+| **Unit** | `tests/unit/` | Config loading, provider factory, log generator output, settings validation | No |
+| **Integration** | `tests/integration/` | Log source lifecycle (start/stop/stream), mock HTTP server for LLM pipeline | Mocked only |
+
+### Test Coverage by Module
+
+- **Config**: Default values, env overrides, OpenAI defaults, provider factory creation, unsupported provider error
+- **Log Generator**: Entry count, severity cycling, service cycling, timestamp ordering, traceback inclusion, no LLM imports
+- **Log Source**: Lifecycle (start/stop), streaming yields lines, sees appended lines, multiple services, name property, double-start safety, severity distribution
+- **LLM Pipeline**: End-to-end with mocked HTTP server returning structured JSON
 
 ---
 
@@ -328,7 +477,7 @@ LLAMA_CPP_MODEL_NAME=./models/your-model.gguf
 
 ### Request Flow
 
-1. The CLI generates mock logs (or you provide real logs in a future version).
+1. The CLI generates mock logs (or you provide real logs from a `BaseLogSource`).
 2. Logs are sent as a `user` message in a chat completion request.
 3. A system prompt instructs the model to return structured JSON with:
    - `root_cause`: string
@@ -392,14 +541,14 @@ OPENAI_API_KEY=your-together-api-key
 ## Future Roadmap
 
 ### Phase 2 — Real Log Sources
-- [ ] Kubernetes log ingestion (via `kubectl logs` or kubelet API)
-- [ ] Grafana Loki log queries (via Loki API)
-- [ ] Prometheus alert ingestion
+- [ ] `KubernetesLogSource` — log ingestion via `kubectl logs` or kubelet API
+- [ ] `LokiLogSource` — Grafana Loki log queries via Loki HTTP API
+- [ ] `PrometheusAlertSource` — Prometheus alertmanager webhook ingestion
 
 ### Phase 3 — Real-Time Monitoring
-- [ ] Continuous log tailing with `asyncio` streams
-- [ ] Error pattern detection (regex-based pre-filtering)
-- [ ] Alert thresholds and notification hooks
+- [ ] Continuous log tailing with `asyncio` streams (already scaffolded)
+- [ ] Error pattern detection (regex-based pre-filtering before LLM)
+- [ ] Alert thresholds and notification hooks (Slack, PagerDuty)
 
 ### Phase 4 — Web Interface
 - [ ] FastAPI backend for REST API access
@@ -422,7 +571,13 @@ source ../venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Run simulation
+# Generate a batch of mock logs
+python -m src generate-logs --count 100
+
+# Stream mock logs in real-time
+python -m src stream-logs --duration 15
+
+# Simulate and send to LLM for analysis
 python -m src simulate
 
 # Run tests

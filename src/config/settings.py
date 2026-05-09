@@ -36,5 +36,19 @@ class Settings(BaseSettings):
     # --- Mock Log Simulation ---
     mock_log_count: int = 50
     mock_log_severities: list[str] = Field(
-        default_factory=lambda: ["info", "warning", "error", "critical"],
+        default_factory=lambda: ["info", "warn", "error", "critical"],
+    )
+
+    # --- Mock Log Source ---
+    mock_log_dir: str = "mocks/logs"
+    mock_log_interval: float = 1.0
+    mock_log_services: list[str] = Field(
+        default_factory=lambda: [
+            "auth-service",
+            "payment-service",
+            "gateway",
+            "inventory-service",
+            "user-api",
+            "order-processor",
+        ],
     )
