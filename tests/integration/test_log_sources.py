@@ -57,9 +57,11 @@ async def test_streaming_yields_lines(settings: Settings, tmp_log_dir: Path) -> 
     try:
         lines_collected: list[LogLine] = []
         # Only read a few lines to avoid waiting for background writes
-        async for i, line in enumerate(source.stream()):
+        count = 0
+        async for line in source.stream():
             lines_collected.append(line)
-            if i >= 14:  # Read initial batch + a couple from background writer
+            count += 1
+            if count >= 15:  # Read initial batch + a couple from background writer
                 break
 
         assert len(lines_collected) > 0
@@ -115,7 +117,7 @@ async def test_source_name_property(settings: Settings) -> None:
 
 
 @pytest.mark.asyncio
-async def test_double_start_is_safe(settings: Settings) -> None:
+async def test_double_start_is_safe(settings: Settings, tmp_log_dir: Path) -> None:
     """Calling start() twice should be a no-op."""
     source = MockFileLogSource(settings, log_dir=tmp_log_dir)
     await source.start()

@@ -19,9 +19,9 @@ class MockFileLogSource(BaseLogSource):
         3. ``stop()`` — signals the background writer and streamer to exit.
     """
 
-    def __init__(self, settings: Settings, log_dir: Path | None = None) -> None:
+    def __init__(self, settings: Settings, log_dir: Path | str | None = None) -> None:
         self._settings = settings
-        self._log_dir = log_dir or Path("mocks/logs")
+        self._log_dir = Path(log_dir) if log_dir else Path("mocks/logs")
         self._filename = "mock_stream.log"
         self._filepath = self._log_dir / self._filename
         self._running = False

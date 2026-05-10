@@ -10,6 +10,7 @@ Generates realistic, structured log entries with:
 
 import asyncio
 import random
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
@@ -132,6 +133,10 @@ class LogEntry:
     pod: str | None = None
     include_traceback: bool = False
 
+    def __str__(self) -> str:
+        """Return the formatted log line (alias for format())."""
+        return self.format()
+
     def format(self) -> str:
         """Format as a Kubernetes-style log line."""
         ts = self.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
@@ -143,9 +148,15 @@ class LogEntry:
         return line
 
 
-def _random_timestamp(base: datetime, offset_seconds: int) -> datetime:
-    """Generate a slightly randomized timestamp around base + offset."""
+def _random_timestamp(base: datetime, offset_seconds: float) -> datetime:
+    """Generate a slightly randomized timestamp around base + offset.
+
+    Ensures the result is never before *base* by clamping negative jitter.
+    """
     jitter = random.uniform(-0.5, 0.5)
+    # Clamp jitter so timestamps never go before base_time
+    if offset_seconds == 0 and jitter < 0:
+        jitter = 0.0
     return base + timedelta(seconds=offset_seconds + jitter)
 
 
@@ -231,7 +242,7 @@ async def stream_log_entries(
     severities: list[str] | None = None,
     services: list[str] | None = None,
     base_time: datetime | None = None,
-) -> None:
+) -> AsyncIterator[LogEntry]:
     """Async generator that yields LogEntry objects one at a time.
 
     Simulates real-time log production by yielding entries with a configurable

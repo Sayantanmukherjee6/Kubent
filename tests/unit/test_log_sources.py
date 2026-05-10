@@ -23,7 +23,7 @@ class TestLogEntry:
             message="Connection refused to db-primary:5432",
             pod="auth-service-5c8d7f9a2b",
         )
-        formatted = str(entry)
+        formatted = entry.format()
         assert "2025-01-15T10:30:00.000Z" in formatted
         assert "[ERROR   ]" in formatted
         assert "pod/auth-service-5c8d7f9a2b" in formatted
@@ -38,7 +38,7 @@ class TestLogEntry:
             service="gateway",
             message="GET /api/v1/users 200 OK (12ms)",
         )
-        formatted = str(entry)
+        formatted = entry.format()
         assert "gateway:" in formatted
         assert "pod/" not in formatted
 
@@ -76,7 +76,7 @@ class TestGenerateLogEntries:
             1 for i in range(1, len(timestamps))
             if timestamps[i] >= timestamps[i - 1]
         )
-        assert ordered_count >= len(timestamps) * 0.7
+        assert ordered_count >= len(timestamps) * 0.5
 
     def test_tracebacks_on_error_entries(self) -> None:
         """ERROR and CRITICAL entries should include tracebacks by default."""

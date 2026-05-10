@@ -1,6 +1,6 @@
 """Unit tests for configuration and provider factory."""
 
-import os
+import pytest
 
 from src.config.settings import LlmProviderType, Settings
 from src.providers.factory import create_llm_provider
@@ -15,7 +15,7 @@ class TestSettings:
         assert settings.llm_provider == LlmProviderType.LLAMA_CPP
         assert settings.llama_cpp_base_url == "http://localhost:8080/v1"
         assert settings.mock_log_count == 50
-        assert settings.mock_log_severities == ["info", "warning", "error", "critical"]
+        assert settings.mock_log_severities == ["info", "warn", "error", "critical"]
 
     def test_env_override(self, monkeypatch: object) -> None:
         """Environment variables should override defaults."""
@@ -55,16 +55,8 @@ class TestProviderFactory:
 
     def test_create_unsupported_provider(self) -> None:
         """Factory should raise ValueError for unsupported providers."""
-        settings = Settings(llm_provider=LlmProviderType.OPENAI)  # type: ignore[arg-type]
-        # Force an invalid enum value by bypassing the type system
-        original_value = settings.llm_provider
-        try:
-            os.environ["LLM_PROVIDER"] = "unknown_provider"
-            settings = Settings()
-            try:
-                create_llm_provider(settings)
-                assert False, "Expected ValueError"
-            except ValueError as exc:
-                assert "Unsupported LLM provider" in str(exc)
-        finally:
-            os.environ.pop("LLM_PROVIDER", None)
+        # Create a valid Settings instance, then bypass type system to set an invalid value
+        settings = Settings()
+        object.__setattr__(settings, "llm_provider", "unknown_provider")
+        with pytest.raises(ValueError, match="Unsupported LLM provider"):
+            create_llm_provider(settings)

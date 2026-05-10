@@ -1,7 +1,6 @@
 """Integration test for the LLM analysis pipeline using a mock server."""
 
 import json
-from collections.abc import AsyncGenerator
 
 import httpx
 import pytest
@@ -20,57 +19,46 @@ def settings() -> Settings:
     )
 
 
-@pytest.fixture()
-async def mock_server() -> AsyncGenerator[None, None]:
-    """Start a minimal mock HTTP server that mimics the llama.cpp API response."""
-
-    async def handler(request: httpx.Request) -> httpx.Response:
-        body = json.loads(request.content)
-        user_content = ""
-        for msg in body["messages"]:
-            if msg["role"] == "user":
-                user_content = msg["content"]
-
-        mock_response = {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": json.dumps({
-                            "root_cause": "Database connection pool exhausted due to leaked connections.",
-                            "severity": "high",
-                            "remediation_suggestions": [
-                                "Restart the affected service to release leaked connections.",
-                                "Increase connection pool size temporarily.",
-                            ],
-                            "preventive_actions": [
-                                "Implement connection leak detection.",
-                                "Add circuit breaker pattern for database calls.",
-                            ],
-                        }),
-                    },
+def _make_mock_response() -> dict:
+    """Build the mock API response dict."""
+    return {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": json.dumps({
+                        "root_cause": "Database connection pool exhausted due to leaked connections.",
+                        "severity": "high",
+                        "remediation_suggestions": [
+                            "Restart the affected service to release leaked connections.",
+                            "Increase connection pool size temporarily.",
+                        ],
+                        "preventive_actions": [
+                            "Implement connection leak detection.",
+                            "Add circuit breaker pattern for database calls.",
+                        ],
+                    }),
                 },
-            ],
-        }
-        return httpx.Response(200, json=mock_response)
+            },
+        ],
+    }
 
-    async with httpx.AsyncClient() as client:
-        # Use a real socket by starting a server in the background
-        import asyncio
-        from unittest.mock import AsyncMock, patch
 
-        original_post = client.post
+@pytest.fixture()
+def mock_async_client_post(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch httpx.AsyncClient.post at the class level so all instances are mocked."""
+    mock_response = httpx.Response(200, json=_make_mock_response())
+    # Attach a dummy request so raise_for_status() works
+    mock_response.request = httpx.Request("POST", "http://localhost:19876/v1/chat/completions")
 
-        async def mock_post(url: str, **kwargs):  # type: ignore[no-untyped-def]
-            request = httpx.Request("POST", url, **kwargs)
-            return await handler(request)
+    async def mock_post(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return mock_response
 
-        with patch.object(client, "post", mock_post):
-            yield
+    monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
 
 
 @pytest.mark.asyncio
-async def test_analysis_pipeline(settings: Settings, mock_server: None) -> None:
+async def test_analysis_pipeline(settings: Settings, mock_async_client_post: None) -> None:
     """End-to-end test: generate logs, send to provider, verify structured result."""
     llm = create_llm_provider(settings)
 
