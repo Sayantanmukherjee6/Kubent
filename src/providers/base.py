@@ -1,8 +1,11 @@
 """Abstract base class for LLM providers."""
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -41,13 +44,22 @@ class BaseLlmProvider(ABC):
                 lines = lines[:-1]
             cleaned = "\n".join(lines).strip()
 
-        data = json.loads(cleaned)
-        return AnalysisResult(
-            root_cause=data["root_cause"],
-            severity=data["severity"],
-            remediation_suggestions=data["remediation_suggestions"],
-            preventive_actions=data["preventive_actions"],
-        )
+        try:
+            data = json.loads(cleaned)
+            return AnalysisResult(
+                root_cause=data["root_cause"],
+                severity=data["severity"],
+                remediation_suggestions=data["remediation_suggestions"],
+                preventive_actions=data["preventive_actions"],
+            )
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            logger.warning("Failed to parse LLM response as JSON: %s", exc)
+            return AnalysisResult(
+                root_cause="Unable to parse analysis result.",
+                severity="low",
+                remediation_suggestions=["Retry the analysis."],
+                preventive_actions=[],
+            )
 
     @property
     def system_prompt(self) -> str:
