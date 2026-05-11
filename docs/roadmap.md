@@ -8,6 +8,7 @@
 ## Phase 3 — Real-Time Monitoring
 - [ ] Continuous log tailing with `asyncio` streams (already scaffolded)
 - [x] Error pattern detection (regex-based pre-filtering before LLM) — **implemented** (see [Watcher Subsystem](watcher.md))
+- [x] Heuristic incident prediction (rolling-window, bounded-memory) — **implemented** (see [predictor.md](predictor.md))
 - [ ] Alert thresholds and notification hooks (Slack, PagerDuty)
 
 ## Phase 4 — Watcher → LLM Orchestration

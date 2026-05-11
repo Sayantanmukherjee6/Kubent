@@ -217,6 +217,99 @@ def watch_logs(duration: float, min_severity: str, dedup_ttl: float,
 
 
 
+# ---------------------------------------------------------------------------
+# predict — stream logs, run watcher + predictor, print PredictorEvent summaries
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.option("--duration", "-d", default=15, type=float, help="Seconds to watch (0 = infinite).")
+@click.option("--min-severity", "-s", default="medium",
+              type=click.Choice(["low", "medium", "high", "critical"], case_sensitive=False),
+              help="Minimum severity level for watcher detection.")
+@click.option("--dedup-ttl", "-t", default=300, type=float, help="Deduplication TTL in seconds.")
+@click.option("--dedup-threshold", "-n", default=1, type=int,
+              help="Minimum occurrences before emitting deduplicated event.")
+def predict(duration: float, min_severity: str, dedup_ttl: float, dedup_threshold: int) -> None:
+    """Stream logs, run watcher and predictor, print PredictorEvent summaries.
+
+    Wires the LogWatcher pipeline into HeuristicPredictor so that every
+    detected IncidentEvent is fed through the heuristic engine and any
+    resulting PredictorEvents are printed to the console.
+    """
+    from src.core.watcher import LogWatcher, WatcherSeverity
+    from src.core.predictor import HeuristicPredictor, RiskLevel
+
+    severity_map = {
+        "low": WatcherSeverity.LOW,
+        "medium": WatcherSeverity.MEDIUM,
+        "high": WatcherSeverity.HIGH,
+        "critical": WatcherSeverity.CRITICAL,
+    }
+    min_sev = severity_map[min_severity.lower()]
+
+    settings = Settings()
+    log_dir = Path(settings.mock_log_dir) if hasattr(settings, "mock_log_dir") else Path("mocks/logs")
+    source = MockFileLogSource(settings, log_dir=log_dir)
+
+    watcher = LogWatcher(
+        min_severity=min_sev,
+        dedup_ttl=dedup_ttl,
+        dedup_threshold=dedup_threshold,
+    )
+    predictor = HeuristicPredictor()
+
+    risk_colors = {
+        RiskLevel.LOW: "yellow",
+        RiskLevel.MEDIUM: "white",
+        RiskLevel.HIGH: "magenta",
+        RiskLevel.CRITICAL: "red",
+    }
+
+    async def _run() -> None:
+        incident_count = 0
+        prediction_count = 0
+        start_time = asyncio.get_event_loop().time()
+
+        click.echo(click.style(f"Predicting on {source.name}", fg="cyan"))
+        click.echo(click.style(f"Min severity: {min_severity} | Dedup TTL: {dedup_ttl}s", fg="black"))
+        click.echo(click.style("-" * 70, fg="black"))
+
+        try:
+            async for incident in watcher.watch(source):
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if duration > 0 and elapsed > duration:
+                    break
+
+                incident_count += 1
+
+                # Feed incident into predictor
+                predictions = await predictor.process(incident)
+
+                for pred in predictions:
+                    prediction_count += 1
+                    color = risk_colors.get(pred.risk_level, "white")
+                    click.echo(click.style(f"\n[PREDICTION #{prediction_count}]", fg=color, bold=True))
+                    click.echo(f"  Timestamp     : {pred.timestamp.isoformat()}")
+                    click.echo(f"  Service       : {pred.service_name}")
+                    click.echo(click.style(f"  Risk Level    : {pred.risk_level.value}", fg=color))
+                    click.echo(f"  Pattern       : {pred.pattern}")
+                    click.echo(f"  Trigger Count : {pred.trigger_count}")
+                    if pred.related_hash:
+                        click.echo(f"  Related Hash  : {pred.related_hash[:12]}...")
+
+        except KeyboardInterrupt:
+            pass
+        finally:
+            await source.stop()
+            elapsed = asyncio.get_event_loop().time() - start_time
+            click.echo(click.style(f"\n{'=' * 70}", fg="black"))
+            click.echo(click.style(f"Stopped after {elapsed:.1f}s. "
+                                   f"{incident_count} incident(s), {prediction_count} prediction(s).",
+                                   fg="green"))
+            click.echo(click.style("=" * 70, fg="black"))
+
+    asyncio.run(_run())
+
 # simulate — generate mock logs and send to LLM for analysis (existing)
 # ---------------------------------------------------------------------------
 

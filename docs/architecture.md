@@ -44,6 +44,18 @@
 │      → ContextBuilder (rolling buf)  │
 │        → DedupTracker                │
 │          → IncidentEvent             │
+└──────────────┬───────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────┐
+│         Predictor Subsystem          │
+│                                      │
+│  HeuristicPredictor                  │
+│    → Rolling window per service      │
+│    → HeuristicRule matching          │
+│      → PredictorEvent                │
+│                                      │
+│  See [predictor.md](predictor.md)    │
 └──────────────────────────────────────┘
 ```
 
