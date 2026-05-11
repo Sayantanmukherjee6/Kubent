@@ -1,5 +1,25 @@
 # Roadmap
 
+Current MVP Scope
+
+The current goal is a lightweight AI-assisted observability MVP focused on:
+
+Logs
+→ Watcher
+→ Predictor
+→ LLM Summary
+→ Email Alert
+
+The project intentionally prioritizes:
+
+deterministic heuristics
+lightweight local execution
+bounded memory usage
+simple orchestration
+hackathon delivery speed
+
+NOT production-scale observability infrastructure.
+
 ## Phase 1 — Watcher Pipeline ✅
 
 Implemented:
