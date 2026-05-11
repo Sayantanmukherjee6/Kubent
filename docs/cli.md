@@ -73,6 +73,15 @@ Options:
 | `--context-before` / `-b` | 5 | Preceding context lines |
 | `--context-after` / `-a` | 3 | Following context lines |
 
+### `predict` — Run predictive anomaly detection
+
+Streams logs through the watcher subsystem and applies heuristic prediction rules.
+
+```bash
+python -m src predict
+python -m src predict --duration 30
+```
+
 ### `simulate` — Generate mock logs and send to LLM for analysis
 
 ```bash

@@ -64,10 +64,20 @@ python -m src simulate
 │         Watcher Subsystem            │
 │                                      │
 │  MockFileLogSource                   │
-│    → LogDetector (regex rules)       │
-│      → ContextBuilder (rolling buf)  │
+│    → LogDetector                     │
+│      → ContextBuilder                │
 │        → DedupTracker                │
 │          → IncidentEvent             │
+└──────────────┬───────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────┐
+│         Predictor Subsystem          │
+│                                      │
+│  HeuristicPredictor                  │
+│    → Rolling windows                 │
+│    → Heuristic rules                 │
+│      → PredictorEvent                │
 └──────────────────────────────────────┘
 ```
 

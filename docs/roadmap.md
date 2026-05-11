@@ -1,28 +1,100 @@
 # Roadmap
 
-## Phase 2 — Real Log Sources
-- [ ] `KubernetesLogSource` — log ingestion via `kubectl logs` or kubelet API
-- [ ] `LokiLogSource` — Grafana Loki log queries via Loki HTTP API
-- [ ] `PrometheusAlertSource` — Prometheus alertmanager webhook ingestion
+## Phase 1 — Watcher Pipeline ✅
 
-## Phase 3 — Real-Time Monitoring
-- [ ] Continuous log tailing with `asyncio` streams (already scaffolded)
-- [x] Error pattern detection (regex-based pre-filtering before LLM) — **implemented** (see [Watcher Subsystem](watcher.md))
-- [x] Heuristic incident prediction (rolling-window, bounded-memory) — **implemented** (see [predictor.md](predictor.md))
-- [ ] Alert thresholds and notification hooks (Slack, PagerDuty)
+Implemented:
 
-## Phase 4 — Watcher → LLM Orchestration
-- [ ] Connect `IncidentEvent` output to `BaseLlmProvider.analyze()`
-- [ ] Route detected incidents to LLM for automated root cause analysis
-- [ ] Store `AnalysisResult` alongside `IncidentEvent` for historical tracking
-- [ ] Configurable routing rules (e.g. only CRITICAL/HIGH severity → LLM)
+* async log streaming
+* regex-based incident detection
+* rolling context extraction
+* deduplication
+* structured `IncidentEvent` emission
 
-## Phase 5 — Web Interface
-- [ ] FastAPI backend for REST API access
-- [ ] Simple web dashboard for viewing analysis results
-- [ ] Historical analysis tracking
+Key components:
 
-## Phase 6 — Advanced AI Features
-- [ ] Multi-turn conversation for deeper investigation
-- [ ] Knowledge base integration (runbook lookup)
-- [ ] Automatic remediation script generation
+* `LogWatcher`
+* `LogDetector`
+* `ContextBuilder`
+* `_DedupTracker`
+
+---
+
+## Phase 2 — Predictive Heuristics ✅
+
+Implemented:
+
+* rolling incident windows
+* heuristic anomaly detection
+* repeated incident escalation
+* bounded-memory predictor subsystem
+* structured `PredictorEvent` emission
+
+Current heuristic coverage:
+
+* repeated HTTP 5xx
+* repeated timeouts
+* repeated OOMKilled
+* repeated connection refused
+
+Key components:
+
+* `HeuristicPredictor`
+* `PredictorEvent`
+* `RiskLevel`
+
+---
+
+## Phase 3 — Real Log Sources
+
+Planned:
+
+* [ ] Folder-based log ingestion
+* [ ] Kubernetes log ingestion (`kubectl logs`) (Not for POC, but future extension)
+* [ ] Loki/Grafana log ingestion (Not for POC, but future extension)
+* [ ] Configurable log source selection (Not for POC, but future extension)
+
+Goal:
+Support realistic production-style log replay and live tailing without changing the watcher/predictor pipeline.
+
+---
+
+## Phase 4 — Predictor → LLM Orchestration
+
+Planned:
+
+* [ ] Connect `PredictorEvent` → `BaseLlmProvider`
+* [ ] AI-generated incident summaries
+* [ ] Mitigation suggestions
+* [ ] Probable impact explanations
+* [ ] Configurable severity-based routing
+
+Goal:
+Use deterministic heuristics for detection and LLMs only for explanation/summarization.
+
+---
+
+## Phase 5 — Email Alerts
+
+Planned:
+
+* [ ] SMTP email notifications
+* [ ] HIGH/CRITICAL severity alerting
+* [ ] AI-generated alert summaries
+* [ ] Failure-safe notification handling
+
+Goal:
+Automatically notify operators when predictive anomalies are detected.
+
+---
+
+## Future Extensions (Optional)
+
+Possible future improvements after the hackathon:
+
+* Slack/Discord notifications
+* Historical event persistence
+* Dashboard visualization
+* Additional heuristic rules
+* More log source integrations
+
+These are intentionally out of scope for the current MVP.

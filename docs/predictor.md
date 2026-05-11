@@ -59,6 +59,7 @@ Custom rules can be passed via the `rules` constructor parameter.
 - **Pattern matching**: For each incoming `IncidentEvent`, the engine pushes the event's `error_type` into the service's window, then counts how many entries match each rule's patterns (substring containment check).
 - **Threshold check**: If any rule's count meets or exceeds its threshold, a `PredictorEvent` is emitted for that rule.
 - **No expiry**: The window is size-bounded, not time-bounded — old events are evicted by count, not by timestamp.
+- This simplified bounded-window approach is intentional for quick POC and deterministic behavior.
 
 ## Predictive Pipeline Flow
 
