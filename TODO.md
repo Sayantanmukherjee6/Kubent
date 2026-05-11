@@ -1,4 +1,8 @@
-# TODO
+# Code Review History
+
+This file documents past code reviews and their resolutions. For current TODOs, see individual issue trackers or project boards.
+
+---
 
 ## Code Review — 2026-05-10 10:39:37 IST
 

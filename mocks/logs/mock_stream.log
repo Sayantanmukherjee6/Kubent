@@ -1,0 +1,194 @@
+2026-05-10T17:02:35.040Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-10T17:02:35.070Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-10T17:02:36.748Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:02:36.201Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:02:40.089Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-10T17:02:48.117Z [WARN    ] pod/order-processor-p9o8n7m6l5: Circuit breaker half-open for inventory-service (1 success, 9 failures)
+2026-05-10T17:02:39.828Z [ERROR   ] pod/notification-worker-a1b2c3d4e5: Redis connection lost to cache-redis-0: READERR OOM command not allowed
+Traceback (most recent call last):
+  File "/app/src/workers/processor.py", line 56, in process
+    result = await self._handler(event)
+  File "/app/src/handlers/order.py", line 112, in handle_order
+    raise ValidationError(f"Invalid order ID: {order_id}")
+src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
+2026-05-10T17:02:43.605Z [CRITICAL] pod/cache-redis-redis-1: Data corruption detected in order table: 3 rows with invalid checksums
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-10T17:02:46.281Z [INFO    ] pod/auth-service-7a2d9e5f1c: Grpc call to inventory-service completed in 23ms
+2026-05-10T17:02:52.159Z [WARN    ] pod/payment-service-7d4f2a8e3b: Stale connection detected on db-replica-2 — reconnecting
+2026-05-10T17:02:42.655Z [ERROR   ] pod/gateway-9d3b7f2e5a: Connection refused to database host db-primary:5432 — ECONNREFUSED
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:02:59.667Z [CRITICAL] pod/inventory-service-5d9b3a7c1e: Disk space critical: /var/log is 98% full — emergency cleanup triggered
+Traceback (most recent call last):
+  File "/app/src/workers/processor.py", line 56, in process
+    result = await self._handler(event)
+  File "/app/src/handlers/order.py", line 112, in handle_order
+    raise ValidationError(f"Invalid order ID: {order_id}")
+src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
+2026-05-10T17:02:54.846Z [INFO    ] pod/user-api-1a2b3c4d5e: Health check passed — all dependencies healthy
+2026-05-10T17:02:53.708Z [WARN    ] pod/order-processor-4u3t2s1r0q: Memory usage above 75% threshold: 78.3% (6.2GB/8GB)
+2026-05-10T17:02:48.009Z [ERROR   ] pod/notification-worker-k1l2m3n4o5: Disk write error on /var/data/ingest: no space left on device
+Traceback (most recent call last):
+  File "/app/src/workers/processor.py", line 56, in process
+    result = await self._handler(event)
+  File "/app/src/handlers/order.py", line 112, in handle_order
+    raise ValidationError(f"Invalid order ID: {order_id}")
+src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
+2026-05-10T17:02:50.380Z [CRITICAL] pod/cache-redis-redis-0: Database primary failover initiated: promoting db-replica-1 to primary
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:03:06.981Z [INFO    ] pod/auth-service-3e1f6b4c8d: TLS certificate valid for 89 days
+2026-05-10T17:03:19.543Z [WARN    ] pod/payment-service-4b8a2c6e9d: Rate limiter triggered for client 10.0.3.45: 120 req/s > 100 limit
+2026-05-10T17:02:50.539Z [ERROR   ] pod/gateway-2f5e8a1d3c: Failed to acquire distributed lock after 3 retries: lock-key=order-sync
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-10T17:02:57.038Z [CRITICAL] pod/inventory-service-3a7c1e5d9b: Memory pressure critical: OOM score adjusted to -998 for container api-gateway
+Traceback (most recent call last):
+  File "/app/src/workers/processor.py", line 56, in process
+    result = await self._handler(event)
+  File "/app/src/handlers/order.py", line 112, in handle_order
+    raise ValidationError(f"Invalid order ID: {order_id}")
+src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
+2026-05-10T17:03:11.577Z [INFO    ] pod/user-api-k1l2m3n4o5: GET /api/v1/users 200 OK (12ms)
+2026-05-10T17:03:22.316Z [WARN    ] pod/order-processor-9z8y7x6w5v: Connection pool utilization at 82% (41/50 connections)
+2026-05-10T17:03:40.150Z [ERROR   ] pod/notification-worker-f6g7h8i9j0: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:03:29.080Z [CRITICAL] pod/cache-redis-redis-2: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:03:12.249Z [INFO    ] pod/auth-service-5c8d7f9a2b: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-10T17:02:49.764Z [WARN    ] pod/payment-service-1c9e5d7f4a: Circuit breaker half-open for inventory-service (1 success, 9 failures)
+2026-05-10T17:03:26.066Z [ERROR   ] pod/gateway-6c1a4e8b2f: Redis connection lost to cache-redis-0: READERR OOM command not allowed
+Traceback (most recent call last):
+  File "/app/src/workers/processor.py", line 56, in process
+    result = await self._handler(event)
+  File "/app/src/handlers/order.py", line 112, in handle_order
+    raise ValidationError(f"Invalid order ID: {order_id}")
+src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
+2026-05-10T17:03:38.132Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Data corruption detected in order table: 3 rows with invalid checksums
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-10T17:03:50.255Z [INFO    ] pod/user-api-6f7g8h9i0j: Grpc call to inventory-service completed in 23ms
+2026-05-10T17:03:52.063Z [WARN    ] pod/order-processor-p9o8n7m6l5: Stale connection detected on db-replica-2 — reconnecting
+2026-05-10T17:03:59.207Z [ERROR   ] pod/notification-worker-a1b2c3d4e5: Connection refused to database host db-primary:5432 — ECONNREFUSED
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:03:25.570Z [CRITICAL] pod/cache-redis-redis-1: Disk space critical: /var/log is 98% full — emergency cleanup triggered
+Traceback (most recent call last):
+  File "/app/src/workers/processor.py", line 56, in process
+    result = await self._handler(event)
+  File "/app/src/handlers/order.py", line 112, in handle_order
+    raise ValidationError(f"Invalid order ID: {order_id}")
+src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
+2026-05-10T17:03:32.098Z [INFO    ] pod/auth-service-7a2d9e5f1c: Health check passed — all dependencies healthy
+2026-05-10T17:03:16.919Z [WARN    ] pod/payment-service-7d4f2a8e3b: Memory usage above 75% threshold: 78.3% (6.2GB/8GB)
+2026-05-10T17:04:10.605Z [ERROR   ] pod/gateway-9d3b7f2e5a: Disk write error on /var/data/ingest: no space left on device
+Traceback (most recent call last):
+  File "/app/src/workers/processor.py", line 56, in process
+    result = await self._handler(event)
+  File "/app/src/handlers/order.py", line 112, in handle_order
+    raise ValidationError(f"Invalid order ID: {order_id}")
+src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
+2026-05-10T17:03:49.351Z [CRITICAL] pod/inventory-service-5d9b3a7c1e: Database primary failover initiated: promoting db-replica-1 to primary
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:03:54.157Z [INFO    ] pod/user-api-1a2b3c4d5e: TLS certificate valid for 89 days
+2026-05-10T17:03:01.656Z [WARN    ] pod/order-processor-4u3t2s1r0q: Rate limiter triggered for client 10.0.3.45: 120 req/s > 100 limit
+2026-05-10T17:03:04.152Z [ERROR   ] pod/notification-worker-k1l2m3n4o5: Failed to acquire distributed lock after 3 retries: lock-key=order-sync
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-10T17:03:57.896Z [CRITICAL] pod/cache-redis-redis-0: Memory pressure critical: OOM score adjusted to -998 for container api-gateway
+Traceback (most recent call last):
+  File "/app/src/workers/processor.py", line 56, in process
+    result = await self._handler(event)
+  File "/app/src/handlers/order.py", line 112, in handle_order
+    raise ValidationError(f"Invalid order ID: {order_id}")
+src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
+2026-05-10T17:04:08.722Z [INFO    ] pod/auth-service-3e1f6b4c8d: GET /api/v1/users 200 OK (12ms)
+2026-05-10T17:03:39.877Z [WARN    ] pod/payment-service-4b8a2c6e9d: Connection pool utilization at 82% (41/50 connections)
+2026-05-10T17:04:22.663Z [ERROR   ] pod/gateway-2f5e8a1d3c: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:03:40.832Z [CRITICAL] pod/inventory-service-3a7c1e5d9b: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-10T17:04:27.224Z [INFO    ] pod/user-api-k1l2m3n4o5: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-10T17:04:06.434Z [WARN    ] pod/order-processor-9z8y7x6w5v: Circuit breaker half-open for inventory-service (1 success, 9 failures)
+2026-05-10T17:04:28.435Z [ERROR   ] pod/notification-worker-f6g7h8i9j0: Redis connection lost to cache-redis-0: READERR OOM command not allowed
+Traceback (most recent call last):
+  File "/app/src/workers/processor.py", line 56, in process
+    result = await self._handler(event)
+  File "/app/src/handlers/order.py", line 112, in handle_order
+    raise ValidationError(f"Invalid order ID: {order_id}")
+src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
+2026-05-10T17:03:10.003Z [CRITICAL] pod/cache-redis-redis-2: Data corruption detected in order table: 3 rows with invalid checksums
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-10T17:03:11.144Z [INFO    ] pod/auth-service-5c8d7f9a2b: Grpc call to inventory-service completed in 23ms
+2026-05-10T17:04:43.461Z [WARN    ] pod/payment-service-1c9e5d7f4a: Stale connection detected on db-replica-2 — reconnecting

@@ -47,7 +47,9 @@ await source.stop()        # Cancel background task, clean up
 
 `mocks/generators/log_generator.py` produces realistic Kubernetes/Grafana-style logs.
 
-**Services:** auth-service, payment-service, gateway, inventory-service, user-api, order-processor, notification-worker, cache-redis
+**Default Services:** auth-service, payment-service, gateway, inventory-service, user-api, order-processor (6 services by default, configurable via `MOCK_LOG_SERVICES` env var or `--services` CLI flag)
+
+The generator internally supports 8 services total: auth-service, payment-service, gateway, inventory-service, user-api, order-processor, notification-worker, cache-notification-worker, cache-redis. However, only the first 6 are included in the Settings default.
 
 **Severities & Messages:**
 | Severity | Examples |

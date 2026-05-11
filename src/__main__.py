@@ -114,8 +114,109 @@ def stream_logs(duration: float, source_file: str | None) -> None:
 
     asyncio.run(_run())
 
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
+# watch-logs — stream logs and detect incidents (no LLM)
+# ---------------------------------------------------------------------------
+
+@cli.command("watch-logs")
+@click.option("--duration", "-d", default=15, type=float, help="Seconds to watch (0 = infinite).")
+@click.option("--min-severity", "-s", default="medium",
+              type=click.Choice(["low", "medium", "high", "critical"], case_sensitive=False),
+              help="Minimum severity level to report.")
+@click.option("--dedup-ttl", "-t", default=300, type=float, help="Deduplication TTL in seconds.")
+@click.option("--dedup-threshold", "-n", default=1, type=int,
+              help="Minimum occurrences before emitting deduplicated event.")
+@click.option("--context-before", "-b", default=5, type=int,
+              help="Number of preceding context lines to capture.")
+@click.option("--context-after", "-a", default=3, type=int,
+              help="Number of following context lines to capture.")
+def watch_logs(duration: float, min_severity: str, dedup_ttl: float,
+               dedup_threshold: int, context_before: int, context_after: int) -> None:
+    """Stream mock logs and detect incidents (no LLM calls).
+
+    Watches a mock log source for errors, extracts surrounding context,
+    deduplicates noisy repeated events, and prints structured incident
+    summaries to the console.
+    """
+    from src.core.watcher import LogWatcher, WatcherSeverity
+
+    severity_map = {
+        "low": WatcherSeverity.LOW,
+        "medium": WatcherSeverity.MEDIUM,
+        "high": WatcherSeverity.HIGH,
+        "critical": WatcherSeverity.CRITICAL,
+    }
+    min_sev = severity_map[min_severity.lower()]
+
+    settings = Settings()
+    log_dir = Path(settings.mock_log_dir) if hasattr(settings, "mock_log_dir") else Path("mocks/logs")
+    source = MockFileLogSource(settings, log_dir=log_dir)
+
+    watcher = LogWatcher(
+        min_severity=min_sev,
+        dedup_ttl=dedup_ttl,
+        dedup_threshold=dedup_threshold,
+        context_before=context_before,
+        context_after=context_after,
+    )
+
+    severity_colors = {
+        WatcherSeverity.LOW: "yellow",
+        WatcherSeverity.MEDIUM: "white",
+        WatcherSeverity.HIGH: "magenta",
+        WatcherSeverity.CRITICAL: "red",
+    }
+
+    async def _run() -> None:
+        incident_count = 0
+        start_time = asyncio.get_event_loop().time()
+
+        click.echo(click.style(f"Watching {source.name}", fg="cyan"))
+        click.echo(click.style(f"Min severity: {min_severity} | Dedup TTL: {dedup_ttl}s | "
+                               f"Dedup threshold: {dedup_threshold}", fg="black"))
+        click.echo(click.style("-" * 70, fg="black"))
+
+        try:
+            async for incident in watcher.watch(source):
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if duration > 0 and elapsed > duration:
+                    break
+
+                incident_count += 1
+                color = severity_colors.get(incident.severity, "white")
+
+                click.echo(click.style(f"\n[INCIDENT #{incident_count}]", fg=color, bold=True))
+                click.echo(f"  Timestamp   : {incident.timestamp.isoformat()}")
+                click.echo(f"  Service     : {incident.service_name}")
+                click.echo(click.style(f"  Severity    : {incident.severity.value}", fg=color))
+                click.echo(f"  Error Type  : {incident.error_type}")
+                click.echo(f"  Occurrences : {incident.occurrence_count}")
+                click.echo(f"  Hash        : {incident.event_hash[:12]}...")
+                click.echo(click.style(f"  Raw line    : {incident.raw_line[:120]}", fg="black"))
+
+                if incident.context_lines:
+                    click.echo(click.style(f"  Context     : {len(incident.context_lines)} lines", fg="black"))
+                    for ctx_line in incident.context_lines[:3]:
+                        click.echo(f"    > {ctx_line[:100]}")
+                    if len(incident.context_lines) > 3:
+                        click.echo(f"    ... and {len(incident.context_lines) - 3} more")
+
+        except KeyboardInterrupt:
+            pass
+        finally:
+            await source.stop()
+            elapsed = asyncio.get_event_loop().time() - start_time
+            click.echo(click.style(f"\n{'=' * 70}", fg="black"))
+            click.echo(click.style(f"Stopped after {elapsed:.1f}s. Detected {incident_count} incident(s).",
+                                   fg="green"))
+            click.echo(click.style("=" * 70, fg="black"))
+
+    asyncio.run(_run())
+
+
+
 # simulate — generate mock logs and send to LLM for analysis (existing)
 # ---------------------------------------------------------------------------
 

@@ -6,7 +6,7 @@ An AI-powered observability assistant that monitors simulated Kubernetes/Grafana
 
 ```bash
 source ../venv/bin/activate
-pip install -r requirements.txt
+pip install -e ".[test]"
 cp .env.example .env   # Edit with your settings
 python -m src simulate
 ```
@@ -19,7 +19,7 @@ python -m src simulate
 | [Providers](docs/providers.md) | LLM backends (llama.cpp, OpenAI), factory, request flow |
 | [Log Sources](docs/log_sources.md) | BaseLogSource abstraction, mock file source, log generator |
 | [Watcher](docs/watcher.md) | Log monitoring and analysis trigger subsystem |
-| [CLI](docs/cli.md) | All commands: generate-logs, stream-logs, simulate |
+| [CLI](docs/cli.md) | All commands: generate-logs, stream-logs, watch-logs, simulate |
 | [Development](docs/development.md) | Prerequisites, setup, config reference, folder structure |
 | [Testing](docs/testing.md) | Test architecture, running tests, coverage by module |
 | [Prompting](docs/prompting.md) | System prompt format and structured JSON output |
@@ -30,25 +30,45 @@ python -m src simulate
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    CLI (click)                       │
-│  generate-logs | stream-logs | simulate             │
+│  generate-logs | stream-logs | watch-logs | simulate │
 └──────┬──────────────────────┬───────────────────────┘
-       │                      ▼
+       │                      │
+       ▼                      ▼
 ┌──────────────────┐  ┌──────────────────────────────┐
 │ Mock File Log    │  │  LLM Providers               │
 │ Source           │  │  BaseLlmProvider (ABC)       │
-│ src/core/        │  │   ├── LlamaCppProvider       │
-│ log_sources/     │  │   └── OpenAiProvider         │
-└──────────────────┘  │  Factory: create_llm_provider│
-       │              │                              │
-       ▼              └──────────────┬───────────────┘
-┌──────────────────┐                 ▼
-│ Mock Log         │        ┌──────────────────┐
-│ Generator        │        │ AnalysisResult   │
-│ mocks/generators/│        │ - root_cause     │
-│ log_generator.py │        │ - severity       │
-└──────────────────┘        │ - remediation    │
-                            │ - preventive     │
-                            └──────────────────┘
+│ src/core/log_sources/ │ ├── LlamaCppProvider       │
+│                  │  │   └── OpenAiProvider         │
+│ - reads mock     │  │                              │
+│   files          │  │  Factory: create_llm_provider│
+│ - streams        │  │      (settings) -> provider  │
+│   appended lines │  │                              │
+│ - start/stop     │  │  Can analyze raw logs via    │
+│   lifecycle      │  │  `python -m src simulate`    │
+└──────────────────┘  └──────────────┬───────────────┘
+       │                             │ (standalone, not wired to watcher)
+       ▼                             │
+┌──────────────────┐                 │
+│ Mock Log         │                 │
+│ Generator        │                 │
+│ mocks/generators/│                 │
+│ log_generator.py │                 │
+└──────────────────┘                 │
+  Generates realistic                │
+  K8s-style logs with:               │
+  - tracebacks, HTTP errors,         │
+    DB failures, OOM kills,          │
+    pod restarts, retry fails        │
+                                       │
+┌──────────────────────────────────────┐
+│         Watcher Subsystem            │
+│                                      │
+│  MockFileLogSource                   │
+│    → LogDetector (regex rules)       │
+│      → ContextBuilder (rolling buf)  │
+│        → DedupTracker                │
+│          → IncidentEvent             │
+└──────────────────────────────────────┘
 ```
 
 ## Design Principles
@@ -63,9 +83,10 @@ python -m src simulate
 
 ```bash
 source ../venv/bin/activate
-pip install -r requirements.txt
+pip install -e ".[test]"
 python -m src generate-logs --count 100
 python -m src stream-logs --duration 15
+python -m src watch-logs --duration 15
 python -m src simulate
 pytest -v
 echo 'LLM_PROVIDER=openai' >> .env   # Switch to OpenAI

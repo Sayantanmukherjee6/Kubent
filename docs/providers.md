@@ -1,8 +1,6 @@
 # LLM Providers
 
-## Overview
-
-Providers wrap LLM API calls and return structured `AnalysisResult` dataclasses. Swap backends by changing one env var.
+LLM providers wrap API calls and return structured `AnalysisResult` dataclasses. They exist as **independent infrastructure** — not yet integrated with the watcher subsystem.
 
 ## Interface
 
@@ -55,8 +53,17 @@ OPENAI_API_KEY=your-together-api-key
 
 `create_llm_provider(settings)` in `src/providers/factory.py` instantiates the correct provider based on `LLM_PROVIDER`.
 
-## Request Flow
+## Usage (standalone)
 
-1. Logs are sent as a `user` message in a chat completion request.
-2. A system prompt instructs the model to return structured JSON with: `root_cause`, `severity` (critical/high/medium/low), `remediation_suggestions`, `preventive_actions`.
-3. The provider parses JSON and returns an `AnalysisResult` dataclass.
+Providers can analyze raw logs manually via the CLI:
+
+```bash
+python -m src simulate
+python -m src simulate --count 100 --provider openai
+```
+
+This generates mock logs, sends them to the configured LLM, and prints the `AnalysisResult` (root_cause, severity, remediation_suggestions, preventive_actions).
+
+## Integration Status
+
+**The watcher subsystem does NOT currently call LLM providers.** Detection is entirely rule-based (regex patterns). Automated orchestration — where detected incidents are automatically routed to LLMs for analysis — is planned for a future phase. See [roadmap.md](roadmap.md).

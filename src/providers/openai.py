@@ -6,6 +6,7 @@ import httpx
 
 from src.config.settings import Settings
 from src.providers.base import AnalysisResult, BaseLlmProvider
+from src.providers.retry import retry
 
 
 class OpenAiProvider(BaseLlmProvider):
@@ -33,14 +34,17 @@ class OpenAiProvider(BaseLlmProvider):
             "Content-Type": "application/json",
         }
 
-        async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(
-                f"{self._base_url}/chat/completions",
-                json=payload,
-                headers=headers,
-            )
-            response.raise_for_status()
-            body = response.json()
+        async def _call() -> dict:
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.post(
+                    f"{self._base_url}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                )
+                response.raise_for_status()
+                return response.json()
+
+        body = await retry(_call)
 
         content: str = body["choices"][0]["message"]["content"]
         return self._parse_json(content)

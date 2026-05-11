@@ -19,7 +19,7 @@ which python        # Should point to ../venv/bin/python
 ### 2. Install Dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -e ".[test]"
 # Or with test extras:
 pip install -e ".[test]"
 ```
@@ -41,11 +41,25 @@ cp .env.example .env
 | `OPENAI_API_KEY` | *(empty)* | OpenAI API key (required for openai provider) |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint URL |
 | `OPENAI_MODEL_NAME` | `gpt-4o` | Model name for OpenAI requests |
-| `MOCK_LOG_COUNT` | `50` | Mock log lines per batch |
+| `MOCK_LOG_COUNT` | `50` | Mock log lines per batch (also configurable via `--count` CLI flag) |
 | `MOCK_LOG_SEVERITIES` | `info,warn,error,critical` | Comma-separated severity levels |
 | `MOCK_LOG_DIR` | `mocks/logs` | Directory for mock log files |
 | `MOCK_LOG_INTERVAL` | `1.0` | Seconds between appended log batches |
 | `MOCK_LOG_SERVICES` | comma-separated list | Services to include in generated logs |
+
+## Watcher Configuration
+
+Watcher behavior is controlled via constructor parameters (not exposed as environment variables):
+
+| Parameter | Default | Description |
+|---|---|---|
+| `min_severity` | MEDIUM | Minimum severity to emit (LOW, MEDIUM, HIGH, CRITICAL) |
+| `dedup_ttl` | 300s | Deduplication fingerprint TTL in seconds |
+| `dedup_threshold` | 1 | Min occurrences before emitting deduplicated event |
+| `context_before` | 5 | Preceding context lines to capture |
+| `context_after` | 3 | Following context lines to capture |
+
+These can be set via CLI flags (e.g., `python -m src watch-logs --min-severity high --dedup-ttl 600`) or programmatically when constructing a `LogWatcher`.
 
 ## Programmatic Configuration
 
@@ -68,9 +82,16 @@ project/
 │   ├── __main__.py               # CLI entrypoint (click-based)
 │   ├── config/                   # Configuration module
 │   │   └── settings.py           # Pydantic Settings from .env
-│   ├── core/log_sources/         # Log source abstraction layer
-│   │   ├── base.py               # BaseLogSource ABC + LogLine dataclass
-│   │   └── mock_file_source.py   # Mock file-based log source
+│   ├── core/                     # Core modules
+│   │   ├── log_sources/          # Log source abstraction layer
+│   │   │   ├── base.py           # BaseLogSource ABC + LogLine dataclass
+│   │   │   └── mock_file_source.py  # Mock file-based log source
+│   │   └── watcher/              # Log monitoring and analysis subsystem
+│   │       ├── __init__.py
+│   │       ├── watcher.py        # LogWatcher orchestrator
+│   │       ├── detector.py       # Regex-based rule engine (32 rules)
+│   │       ├── context_builder.py  # Rolling buffer + context extraction
+│   │       └── models.py         # Data models (WatcherSeverity, IncidentEvent, etc.)
 │   ├── providers/                # LLM provider implementations
 │   │   ├── base.py               # Abstract base class + AnalysisResult
 │   │   ├── llama_cpp.py          # Local llama.cpp provider
@@ -80,10 +101,19 @@ project/
 ├── tests/                        # Test suite
 │   ├── unit/                     # Unit tests (no network calls)
 │   │   ├── test_config.py
-│   │   └── test_log_sources.py
+│   │   ├── test_log_sources.py
+│   │   └── watcher/              # Watcher unit tests
+│   │       ├── __init__.py
+│   │       ├── test_context_builder.py
+│   │       ├── test_dedup.py
+│   │       └── test_detector.py
 │   └── integration/              # Integration tests (mock HTTP / file I/O)
 │       ├── test_llm_pipeline.py  # End-to-end pipeline with mock server
-│       └── test_log_sources.py   # Log source lifecycle + streaming tests
+│       ├── test_log_sources.py   # Log source lifecycle + streaming tests
+│       └── watcher/              # Watcher integration tests
+│           ├── __init__.py
+│           ├── test_multi_service.py
+│           └── test_watcher_flow.py
 ├── mocks/                        # Mock/simulation resources
 │   ├── logs/                     # Sample log files
 │   │   └── sample_k8s_errors.log
@@ -91,5 +121,4 @@ project/
 │       └── log_generator.py      # Reusable mock log generator + async streamer
 ├── .env.example
 ├── pyproject.toml                # Project metadata + pytest config
-└── requirements.txt              # pip dependencies
 ```
