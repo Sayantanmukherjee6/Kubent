@@ -149,3 +149,61 @@ class TestDedupConfig:
         
         tracker.record("hash1", now)
         assert tracker.should_emit("hash1", now) is True
+
+
+class TestDedupPeriodicCleanup:
+    """Tests for periodic cleanup invocation and bounded memory growth."""
+
+    def test_cleanup_removes_expired_entries(self) -> None:
+        """Expired entries should be removed by cleanup()."""
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        tracker = _DedupTracker(ttl_seconds=60.0)
+
+        # Add entries with different ages
+        tracker.record("old_hash", base_time)
+        tracker.record("old_hash2", base_time)
+        tracker.record("fresh_hash", base_time + timedelta(seconds=30))
+
+        # Cleanup after TTL expires for old entries
+        removed = tracker.cleanup(base_time + timedelta(seconds=90))
+
+        assert removed == 2
+        assert "old_hash" not in tracker._entries
+        assert "old_hash2" not in tracker._entries
+        assert "fresh_hash" in tracker._entries
+
+    def test_cleanup_bounded_memory(self) -> None:
+        """Memory growth should be bounded by periodic cleanup."""
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        tracker = _DedupTracker(ttl_seconds=10.0)
+
+        # Simulate many unique hashes expiring over time
+        now = base_time + timedelta(seconds=20)
+        for i in range(50):
+            tracker.record(f"hash_{i}", base_time)  # all will be expired
+
+        assert len(tracker._entries) == 50
+
+        # After cleanup, all expired entries removed
+        removed = tracker.cleanup(now)
+        assert removed == 50
+        assert len(tracker._entries) == 0
+
+    def test_cleanup_keeps_fresh_entries(self) -> None:
+        """cleanup() should not remove non-expired entries."""
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        tracker = _DedupTracker(ttl_seconds=60.0)
+
+        for i in range(20):
+            tracker.record(f"fresh_hash_{i}", base_time + timedelta(seconds=30))
+
+        removed = tracker.cleanup(base_time + timedelta(seconds=45))
+
+        assert removed == 0
+        assert len(tracker._entries) == 20
+
+    def test_cleanup_returns_zero_when_empty(self) -> None:
+        """cleanup() on empty tracker should return 0."""
+        tracker = _DedupTracker()
+        now = datetime.now(timezone.utc)
+        assert tracker.cleanup(now) == 0

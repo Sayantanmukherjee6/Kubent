@@ -213,6 +213,8 @@ class LogWatcher:
         self._min_severity = min_severity
         self._line_counters: dict[str, int] = defaultdict(int)
         self._last_service: dict[str, str] = {}
+        self._cleanup_counter: int = 0
+        self._cleanup_interval: int = 100  # call cleanup() every N lines
 
     # -- public API ----------------------------------------------------------
 
@@ -230,6 +232,9 @@ class LogWatcher:
         await source.start()
         try:
             async for log_line in source.stream():
+                self._cleanup_counter += 1
+                if self._cleanup_counter % self._cleanup_interval == 0:
+                    self._dedup.cleanup()
                 async for incident in self._process_line(log_line):
                     yield incident
         finally:

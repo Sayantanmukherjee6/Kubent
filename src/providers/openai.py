@@ -35,7 +35,7 @@ class OpenAiProvider(BaseLlmProvider):
         }
 
         async def _call() -> dict:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(connect=10, read=45, write=10, pool=5)) as client:
                 response = await client.post(
                     f"{self._base_url}/chat/completions",
                     json=payload,
