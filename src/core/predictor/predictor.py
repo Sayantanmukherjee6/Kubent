@@ -186,8 +186,12 @@ class HeuristicPredictor:
 
     @staticmethod
     def _count_matches(window: _ServiceWindow, rule: HeuristicRule) -> int:
-        """Count window entries matching any pattern in the rule."""
-        total = 0
-        for pat in rule.patterns:
-            total += window.count_matching(pat)
-        return total
+        """Count window entries matching any pattern in the rule.
+
+        Each entry is counted at most once even if multiple patterns match.
+        """
+        count = 0
+        for fp in window._deque:
+            if any(pat in fp for pat in rule.patterns):
+                count += 1
+        return count

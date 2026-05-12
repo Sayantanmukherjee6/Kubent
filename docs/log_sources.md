@@ -17,12 +17,54 @@ class BaseLogSource(ABC):
 Consumers treat all sources uniformly:
 
 ```python
-source: BaseLogSource = MockFileLogSource(settings)
+source: BaseLogSource = create_log_source(settings)
 await source.start()
 async for log_line in source.stream():
     await analyzer.analyze(log_line.text)
 await source.stop()
 ```
+
+## Source Factory
+
+`create_log_source(settings)` (`src/core/log_sources/factory.py`) returns the configured source:
+
+| `log_source.type` | Returns              | Description                        |
+|-------------------|----------------------|------------------------------------|
+| `"mock"`          | `MockFileLogSource`  | Generates synthetic K8s logs       |
+| `"folder"`        | `FolderLogSource`    | Tails `*.log` files in a directory |
+
+```python
+from src.config.settings import Settings
+from src.core.log_sources.factory import create_log_source
+
+settings = Settings()
+source = create_log_source(settings)  # Returns configured source type
+```
+
+**CLI usage:** All CLI commands (`stream-logs`, `watch-logs`, `predict`) use the factory.
+Override source type and directory without modifying config:
+
+```bash
+python -m src stream-logs --source folder --log-dir /tmp/k8s-logs
+python -m src watch-logs --source mock --log-dir /tmp/demo-logs
+python -m src predict --source folder --log-dir /var/log/apps
+```
+
+## Configuration
+
+```yaml
+# config/config.yaml
+log_source:
+  type: mock                        # "mock" or "folder"
+  folder_path: mocks/logs           # base directory for logs
+```
+
+Or via environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `LOG_SOURCE_TYPE` | `mock` | Override log source type |
+| `LOG_SOURCE_FOLDER_PATH` | `mocks/logs` | Override log directory |
 
 ## Mock File Log Source
 
@@ -43,23 +85,48 @@ await source.stop()        # Cancel background task, clean up
 
 **Features:** Handles file truncation (restarts from beginning if file shrinks), thread-safe via asyncio event loop, configurable write interval via `MOCK_LOG_INTERVAL`.
 
+## Folder Log Source
+
+`FolderLogSource` (`src/core/log_sources/folder_source.py`) tails existing `*.log` files in a shared directory. Designed for ingesting logs produced by external processes (e.g. sidecar containers writing to a shared volume).
+
+**Configuration:**
+```yaml
+log_source:
+  type: folder
+  folder_path: /tmp/k8s-shared-logs
+```
+
+**Lifecycle:**
+```python
+source = FolderLogSource(settings, folder_path="/tmp/k8s-shared-logs")
+await source.start()       # Scan directory for *.log files
+async for line in source.stream():  # Poll and yield new lines
+    print(line.text)
+await source.stop()
+```
+
+**Features:**
+- Polling-based (no inotify/watchdog) — works on all platforms including macOS
+- Per-file offset tracking — each `*.log` file is tracked independently
+- Detects appended lines only — does not re-read already-consumed content
+- Ignores non-`*.log` files — only files matching `*.log` are watched
+- Handles missing/empty files gracefully — no crashes on file removal
+- Discovers new files dynamically — files added after `start()` are picked up on the next poll
+- Handles file truncation — if a file shrinks, offset resets to 0
+
 ## Mock Log Generator
 
 `mocks/generators/log_generator.py` produces realistic Kubernetes/Grafana-style logs.
 
 **Default Services:** auth-service, payment-service, gateway, inventory-service, user-api, order-processor (6 services by default, configurable via `MOCK_LOG_SERVICES` env var or `--services` CLI flag)
 
-The generator internally supports 8 services total: auth-service, payment-service, gateway, inventory-service, user-api, order-processor, notification-worker, cache-notification-worker, cache-redis. However, only the first 6 are included in the Settings default.
-
 **Severities & Messages:**
 | Severity | Examples |
 |---|---|
-| INFO | `GET /api/v1/users 200 OK (12ms)`, `Health check passed — all dependencies healthy` |
+| INFO | `GET /api/v1/users 200 OK (12ms)`, `Health check passed` |
 | WARN | `Response time exceeded 500ms threshold`, `Connection pool utilization at 82%` |
-| ERROR | `Connection refused to database host db-primary:5432`, `HTTP 503 from upstream service` |
+| ERROR | `Connection refused to database host db-primary:5432`, `HTTP 503 from upstream` |
 | CRITICAL | `Out of memory: killed process 12345 (java)`, `Pod crash-looping: OOMKilled` |
-
-**Realistic details:** Kubernetes pod names, full Python tracebacks on ERROR/CRITICAL, HTTP error codes, DB connection failures, retry attempts, OOM kills, circuit breaker states, realistic timestamps with jitter.
 
 **API:**
 ```python

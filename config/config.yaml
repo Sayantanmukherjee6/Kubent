@@ -1,0 +1,48 @@
+# =============================================================================
+# Kubernetes Agent — Runtime Configuration
+# =============================================================================
+# This file centralizes all runtime configuration.  Environment variables
+# (from .env or the shell) override YAML values when both are present.
+#
+# To switch log sources, change `log_source.type`:
+#   - mock    : generates synthetic K8s logs (default)
+#   - folder  : tails an existing directory of log files
+# =============================================================================
+
+log_source:
+  type: mock                        # "mock" or "folder"
+  folder_path: mocks/logs           # base directory for mock / folder logs
+
+mock:
+  log_count: 50                     # initial batch size for mock logs
+  interval: 1.0                     # seconds between appended batches
+  severities: [info, warn, error, critical]
+  services:
+    - auth-service
+    - payment-service
+    - gateway
+    - inventory-service
+    - user-api
+    - order-processor
+
+watcher:
+  min_severity: medium              # LOW | MEDIUM | HIGH | CRITICAL
+  dedup_ttl: 300                    # seconds
+  dedup_threshold: 1                # min occurrences before emitting
+  context_before: 5                 # preceding context lines
+  context_after: 3                  # following context lines
+
+predictor:
+  window_size: 200                  # max events per service in rolling window
+
+llm:
+  provider: llama_cpp               # "llama_cpp" or "openai"
+
+  llama_cpp:
+    base_url: http://localhost:8080/v1
+    model_name: ./models/llama-model.gguf
+
+  openai:
+    api_key: ""
+    base_url: https://api.openai.com/v1
+    model_name: gpt-4o

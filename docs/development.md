@@ -20,8 +20,6 @@ which python        # Should point to ../venv/bin/python
 
 ```bash
 pip install -e ".[test]"
-# Or with test extras:
-pip install -e ".[test]"
 ```
 
 ### 3. Configure Environment Variables
@@ -33,19 +31,59 @@ cp .env.example .env
 
 ## Configuration Reference
 
+Configuration is loaded from `config/config.yaml` with environment variable overrides.
+
+### config/config.yaml
+
+```yaml
+log_source:
+  type: mock                        # "mock" or "folder"
+  folder_path: mocks/logs           # base directory for logs
+
+mock:
+  log_count: 50                     # initial batch size
+  interval: 1.0                     # seconds between batches
+  severities: [info, warn, error, critical]
+  services: [auth-service, payment-service, gateway, ...]
+
+watcher:
+  min_severity: medium              # LOW | MEDIUM | HIGH | CRITICAL
+  dedup_ttl: 300                    # seconds
+  dedup_threshold: 1                # min occurrences before emitting
+  context_before: 5                 # preceding context lines
+  context_after: 3                  # following context lines
+
+predictor:
+  window_size: 200                  # max events per service
+
+llm:
+  provider: llama_cpp               # "llama_cpp" or "openai"
+  llama_cpp:
+    base_url: http://localhost:8080/v1
+    model_name: ./models/llama-model.gguf
+  openai:
+    api_key: ""
+    base_url: https://api.openai.com/v1
+    model_name: gpt-4o
+```
+
+### Environment Variables
+
 | Variable | Default | Description |
 |---|---|---|
 | `LLM_PROVIDER` | `llama_cpp` | Provider: `llama_cpp` or `openai` |
 | `LLAMA_CPP_BASE_URL` | `http://localhost:8080/v1` | llama.cpp server endpoint |
-| `LLAMA_CPP_MODEL_NAME` | `./models/llama-model.gguf` | Model identifier |
-| `OPENAI_API_KEY` | *(empty)* | OpenAI API key (required for openai provider) |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint URL |
-| `OPENAI_MODEL_NAME` | `gpt-4o` | Model name for OpenAI requests |
-| `MOCK_LOG_COUNT` | `50` | Mock log lines per batch (also configurable via `--count` CLI flag) |
-| `MOCK_LOG_SEVERITIES` | `info,warn,error,critical` | Comma-separated severity levels |
+| `LLAMA_CPP_MODEL_NAME` | `./models/llama-model.gguf` | Model path |
+| `OPENAI_API_KEY` | *(empty)* | OpenAI API key |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint |
+| `OPENAI_MODEL_NAME` | `gpt-4o` | Model name for OpenAI |
+| `MOCK_LOG_COUNT` | `50` | Mock log lines per batch |
+| `MOCK_LOG_SEVERITIES` | `info,warn,error,critical` | Comma-separated severities |
 | `MOCK_LOG_DIR` | `mocks/logs` | Directory for mock log files |
-| `MOCK_LOG_INTERVAL` | `1.0` | Seconds between appended log batches |
-| `MOCK_LOG_SERVICES` | comma-separated list | Services to include in generated logs |
+| `MOCK_LOG_INTERVAL` | `1.0` | Seconds between appended batches |
+| `MOCK_LOG_SERVICES` | comma-separated list | Services in generated logs |
+| `LOG_SOURCE_TYPE` | `mock` | Override log source type |
+| `LOG_SOURCE_FOLDER_PATH` | `mocks/logs` | Override log source directory |
 
 ## Watcher Configuration
 
@@ -78,47 +116,59 @@ settings = Settings(
 
 ```
 project/
-├── src/                          # Main source code
+├── config/
+│   └── config.yaml               # Central runtime configuration
+├── src/
 │   ├── __main__.py               # CLI entrypoint (click-based)
-│   ├── config/                   # Configuration module
-│   │   └── settings.py           # Pydantic Settings from .env
-│   ├── core/                     # Core modules
-│   │   ├── log_sources/          # Log source abstraction layer
+│   ├── config/
+│   │   └── settings.py           # Settings from config.yaml + env vars
+│   ├── core/
+│   │   ├── log_sources/
 │   │   │   ├── base.py           # BaseLogSource ABC + LogLine dataclass
-│   │   │   └── mock_file_source.py  # Mock file-based log source
-│   │   └── watcher/              # Log monitoring and analysis subsystem
-│   │       ├── __init__.py
-│   │       ├── watcher.py        # LogWatcher orchestrator
-│   │       ├── detector.py       # Regex-based rule engine (32 rules)
-│   │       ├── context_builder.py  # Rolling buffer + context extraction
-│   │       └── models.py         # Data models (WatcherSeverity, IncidentEvent, etc.)
-│   ├── providers/                # LLM provider implementations
+│   │   │   ├── factory.py        # create_log_source(settings) factory
+│   │   │   ├── mock_file_source.py  # Mock file-based log source
+│   │   │   └── folder_source.py  # Tails *.log files in a directory
+│   │   ├── watcher/
+│   │   │   ├── watcher.py        # LogWatcher orchestrator
+│   │   │   ├── detector.py       # Regex-based rule engine
+│   │   │   ├── context_builder.py  # Rolling buffer + context extraction
+│   │   │   └── models.py         # WatcherSeverity, IncidentEvent, etc.
+│   │   └── predictor/
+│   │       ├── predictor.py      # HeuristicPredictor
+│   │       └── models.py         # RiskLevel, PredictorEvent
+│   ├── providers/
 │   │   ├── base.py               # Abstract base class + AnalysisResult
 │   │   ├── llama_cpp.py          # Local llama.cpp provider
 │   │   ├── openai.py             # OpenAI API provider
-│   │   └── factory.py            # Provider creation factory
-│   └── utils/                    # Utility functions (future)
-├── tests/                        # Test suite
-│   ├── unit/                     # Unit tests (no network calls)
+│   │   ├── factory.py            # Provider creation factory
+│   │   └── retry.py              # Retry logic for LLM calls
+│   └── utils/
+├── tests/
+│   ├── unit/
 │   │   ├── test_config.py
 │   │   ├── test_log_sources.py
-│   │   └── watcher/              # Watcher unit tests
-│   │       ├── __init__.py
+│   │   ├── test_folder_source.py
+│   │   ├── predictor/
+│   │   │   └── test_predictor.py
+│   │   ├── providers/
+│   │   │   ├── test_base.py
+│   │   │   └── test_retry.py
+│   │   └── watcher/
 │   │       ├── test_context_builder.py
 │   │       ├── test_dedup.py
 │   │       └── test_detector.py
-│   └── integration/              # Integration tests (mock HTTP / file I/O)
-│       ├── test_llm_pipeline.py  # End-to-end pipeline with mock server
-│       ├── test_log_sources.py   # Log source lifecycle + streaming tests
-│       └── watcher/              # Watcher integration tests
-│           ├── __init__.py
+│   └── integration/
+│       ├── test_llm_pipeline.py
+│       ├── test_log_sources.py
+│       ├── predictor/
+│       │   └── test_predict_flow.py
+│       └── watcher/
 │           ├── test_multi_service.py
 │           └── test_watcher_flow.py
-├── mocks/                        # Mock/simulation resources
+├── mocks/
 │   ├── logs/                     # Sample log files
-│   │   └── sample_k8s_errors.log
-│   └── generators/               # Log generation utilities
-│       └── log_generator.py      # Reusable mock log generator + async streamer
+│   └── generators/
+│       └── log_generator.py      # Mock log generation
 ├── .env.example
-├── pyproject.toml                # Project metadata + pytest config
+└── pyproject.toml                # Project metadata + pytest config
 ```

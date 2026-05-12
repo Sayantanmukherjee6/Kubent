@@ -7,8 +7,27 @@ from pathlib import Path
 import click
 
 from src.config.settings import Settings, LlmProviderType
-from src.core.log_sources.mock_file_source import MockFileLogSource
+from src.core.log_sources.factory import create_log_source
+from src.core.predictor.models import RiskLevel
 from mocks.generators.log_generator import generate_mock_logs_text
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _build_settings(source: str | None = None, log_dir: str | None = None) -> Settings:
+    """Build Settings with optional CLI overrides for log source type and directory.
+
+    All commands that consume logs (stream-logs, watch-logs, predict) use this
+    helper so that source selection always goes through the factory.
+    """
+    overrides = {}
+    if source is not None:
+        overrides["log_source_type"] = source
+    if log_dir is not None:
+        overrides["log_source_folder_path"] = log_dir
+    return Settings(**overrides)
 
 
 @click.group()
@@ -64,10 +83,12 @@ def generate_logs(count: int | None, output: str | None, services: str | None, s
 @cli.command()
 @click.option("--duration", "-d", default=10, type=float, help="Seconds to stream (0 = infinite).")
 @click.option("--source-file", "-f", default=None, type=str, help="Existing log file to tail.")
-def stream_logs(duration: float, source_file: str | None) -> None:
-    """Stream mock logs in real-time from the configured mock log source."""
-    settings = Settings()
-
+@click.option("--source", "-S", default=None, type=click.Choice(["mock", "folder"], case_sensitive=False),
+              help="Override log source type (mock or folder).")
+@click.option("--log-dir", default=None, type=click.Path(),
+              help="Override log directory path (used by mock and folder sources).")
+def stream_logs(duration: float, source_file: str | None, source: str | None, log_dir: str | None) -> None:
+    """Stream logs in real-time from the configured log source."""
     if source_file is not None:
         # Simple mode: tail an existing file
         filepath = Path(source_file)
@@ -90,17 +111,17 @@ def stream_logs(duration: float, source_file: str | None) -> None:
                 click.echo("\nStopped tailing.")
         return
 
-    # Full mock file source mode
-    log_dir = Path(settings.mock_log_dir) if hasattr(settings, "mock_log_dir") else Path("mocks/logs")
-    source = MockFileLogSource(settings, log_dir=log_dir)
+    # Build settings with optional CLI overrides via shared helper
+    settings = _build_settings(source, log_dir)
+    log_source = create_log_source(settings)
 
     async def _run() -> None:
-        await source.start()
+        await log_source.start()
         try:
-            click.echo(f"Streaming from {source.name} (Ctrl+C to stop)...")
+            click.echo(f"Streaming from {log_source.name} (Ctrl+C to stop)...")
             count = 0
             start_time = asyncio.get_event_loop().time()
-            async for log_line in source.stream():
+            async for log_line in log_source.stream():
                 elapsed = asyncio.get_event_loop().time() - start_time
                 if duration > 0 and elapsed > duration:
                     break
@@ -109,7 +130,7 @@ def stream_logs(duration: float, source_file: str | None) -> None:
         except KeyboardInterrupt:
             pass
         finally:
-            await source.stop()
+            await log_source.stop()
             click.echo(click.style(f"\nStopped. Received {count} log lines.", fg="green"))
 
     asyncio.run(_run())
@@ -132,11 +153,16 @@ def stream_logs(duration: float, source_file: str | None) -> None:
               help="Number of preceding context lines to capture.")
 @click.option("--context-after", "-a", default=3, type=int,
               help="Number of following context lines to capture.")
+@click.option("--source", "-S", default=None, type=click.Choice(["mock", "folder"], case_sensitive=False),
+              help="Override log source type (mock or folder).")
+@click.option("--log-dir", default=None, type=click.Path(),
+              help="Override log directory path (used by mock and folder sources).")
 def watch_logs(duration: float, min_severity: str, dedup_ttl: float,
-               dedup_threshold: int, context_before: int, context_after: int) -> None:
-    """Stream mock logs and detect incidents (no LLM calls).
+               dedup_threshold: int, context_before: int, context_after: int,
+               source: str | None, log_dir: str | None) -> None:
+    """Stream logs and detect incidents (no LLM calls).
 
-    Watches a mock log source for errors, extracts surrounding context,
+    Watches a log source for errors, extracts surrounding context,
     deduplicates noisy repeated events, and prints structured incident
     summaries to the console.
     """
@@ -150,9 +176,9 @@ def watch_logs(duration: float, min_severity: str, dedup_ttl: float,
     }
     min_sev = severity_map[min_severity.lower()]
 
-    settings = Settings()
-    log_dir = Path(settings.mock_log_dir) if hasattr(settings, "mock_log_dir") else Path("mocks/logs")
-    source = MockFileLogSource(settings, log_dir=log_dir)
+    # Build settings with optional CLI overrides via shared helper
+    settings = _build_settings(source, log_dir)
+    log_source = create_log_source(settings)
 
     watcher = LogWatcher(
         min_severity=min_sev,
@@ -173,13 +199,13 @@ def watch_logs(duration: float, min_severity: str, dedup_ttl: float,
         incident_count = 0
         start_time = asyncio.get_event_loop().time()
 
-        click.echo(click.style(f"Watching {source.name}", fg="cyan"))
+        click.echo(click.style(f"Watching {log_source.name}", fg="cyan"))
         click.echo(click.style(f"Min severity: {min_severity} | Dedup TTL: {dedup_ttl}s | "
                                f"Dedup threshold: {dedup_threshold}", fg="black"))
         click.echo(click.style("-" * 70, fg="black"))
 
         try:
-            async for incident in watcher.watch(source):
+            async for incident in watcher.watch(log_source):
                 elapsed = asyncio.get_event_loop().time() - start_time
                 if duration > 0 and elapsed > duration:
                     break
@@ -206,7 +232,7 @@ def watch_logs(duration: float, min_severity: str, dedup_ttl: float,
         except KeyboardInterrupt:
             pass
         finally:
-            await source.stop()
+            await log_source.stop()
             elapsed = asyncio.get_event_loop().time() - start_time
             click.echo(click.style(f"\n{'=' * 70}", fg="black"))
             click.echo(click.style(f"Stopped after {elapsed:.1f}s. Detected {incident_count} incident(s).",
@@ -221,6 +247,36 @@ def watch_logs(duration: float, min_severity: str, dedup_ttl: float,
 # predict — stream logs, run watcher + predictor, print PredictorEvent summaries
 # ---------------------------------------------------------------------------
 
+_RISK_LABELS = {
+    RiskLevel.CRITICAL: "[CRITICAL]",
+    RiskLevel.HIGH:     "[HIGH]",
+    RiskLevel.MEDIUM:   "[MEDIUM]",
+    RiskLevel.LOW:      "[LOW]",
+}
+
+_RISK_COLORS = {
+    RiskLevel.CRITICAL: "red",
+    RiskLevel.HIGH:     "magenta",
+    RiskLevel.MEDIUM:   "yellow",
+    RiskLevel.LOW:      "cyan",
+}
+
+
+def _format_prediction(pred, number):
+    """Format a single PredictorEvent for terminal display."""
+    label = _RISK_LABELS.get(pred.risk_level, "[UNKNOWN]")
+    color = _RISK_COLORS.get(pred.risk_level, "white")
+    parts = [
+        click.style(f"{label}  #{number}", fg=color, bold=True),
+        f"  service   = {pred.service_name}",
+        f"  pattern   = {pred.pattern}",
+        f"  trigger_count = {pred.trigger_count}",
+    ]
+    if pred.related_hash:
+        parts.append(f"  related   = {pred.related_hash[:12]}")
+    return click.style("\n".join(parts), fg=color)
+
+
 @cli.command()
 @click.option("--duration", "-d", default=15, type=float, help="Seconds to watch (0 = infinite).")
 @click.option("--min-severity", "-s", default="medium",
@@ -229,12 +285,19 @@ def watch_logs(duration: float, min_severity: str, dedup_ttl: float,
 @click.option("--dedup-ttl", "-t", default=300, type=float, help="Deduplication TTL in seconds.")
 @click.option("--dedup-threshold", "-n", default=1, type=int,
               help="Minimum occurrences before emitting deduplicated event.")
-def predict(duration: float, min_severity: str, dedup_ttl: float, dedup_threshold: int) -> None:
+@click.option("--source", "-S", default=None, type=click.Choice(["mock", "folder"], case_sensitive=False),
+              help="Override log source type (mock or folder).")
+@click.option("--log-dir", default=None, type=click.Path(),
+              help="Override log directory path (used by mock and folder sources).")
+def predict(duration, min_severity, dedup_ttl, dedup_threshold, source, log_dir):
     """Stream logs, run watcher and predictor, print PredictorEvent summaries.
 
     Wires the LogWatcher pipeline into HeuristicPredictor so that every
     detected IncidentEvent is fed through the heuristic engine and any
     resulting PredictorEvents are printed to the console.
+
+    CLI flags (--source, --log-dir) temporarily override YAML config
+    without modifying the file.
     """
     from src.core.watcher import LogWatcher, WatcherSeverity
     from src.core.predictor import HeuristicPredictor, RiskLevel
@@ -247,9 +310,9 @@ def predict(duration: float, min_severity: str, dedup_ttl: float, dedup_threshol
     }
     min_sev = severity_map[min_severity.lower()]
 
-    settings = Settings()
-    log_dir = Path(settings.mock_log_dir) if hasattr(settings, "mock_log_dir") else Path("mocks/logs")
-    source = MockFileLogSource(settings, log_dir=log_dir)
+    # Build settings with optional CLI overrides via shared helper
+    settings = _build_settings(source, log_dir)
+    log_source = create_log_source(settings)
 
     watcher = LogWatcher(
         min_severity=min_sev,
@@ -258,55 +321,48 @@ def predict(duration: float, min_severity: str, dedup_ttl: float, dedup_threshol
     )
     predictor = HeuristicPredictor()
 
-    risk_colors = {
-        RiskLevel.LOW: "yellow",
-        RiskLevel.MEDIUM: "white",
-        RiskLevel.HIGH: "magenta",
-        RiskLevel.CRITICAL: "red",
-    }
-
-    async def _run() -> None:
+    async def _run():
         incident_count = 0
         prediction_count = 0
         start_time = asyncio.get_event_loop().time()
 
-        click.echo(click.style(f"Predicting on {source.name}", fg="cyan"))
-        click.echo(click.style(f"Min severity: {min_severity} | Dedup TTL: {dedup_ttl}s", fg="black"))
-        click.echo(click.style("-" * 70, fg="black"))
+        click.echo(click.style(f"Predicting on {log_source.name}", fg="cyan", bold=True))
+        click.echo(click.style(
+            f"Min severity: {min_severity} | Dedup TTL: {dedup_ttl}s | "
+            f"Dedup threshold: {dedup_threshold}", fg="bright_black"))
+        click.echo(click.style("-" * 70, fg="bright_black"))
 
         try:
-            async for incident in watcher.watch(source):
+            async for incident in watcher.watch(log_source):
                 elapsed = asyncio.get_event_loop().time() - start_time
                 if duration > 0 and elapsed > duration:
                     break
 
                 incident_count += 1
-
-                # Feed incident into predictor
                 predictions = await predictor.process(incident)
 
                 for pred in predictions:
                     prediction_count += 1
-                    color = risk_colors.get(pred.risk_level, "white")
-                    click.echo(click.style(f"\n[PREDICTION #{prediction_count}]", fg=color, bold=True))
-                    click.echo(f"  Timestamp     : {pred.timestamp.isoformat()}")
-                    click.echo(f"  Service       : {pred.service_name}")
-                    click.echo(click.style(f"  Risk Level    : {pred.risk_level.value}", fg=color))
-                    click.echo(f"  Pattern       : {pred.pattern}")
-                    click.echo(f"  Trigger Count : {pred.trigger_count}")
-                    if pred.related_hash:
-                        click.echo(f"  Related Hash  : {pred.related_hash[:12]}...")
+                    click.echo(_format_prediction(pred, prediction_count))
 
         except KeyboardInterrupt:
             pass
         finally:
-            await source.stop()
+            try:
+                await asyncio.wait_for(log_source.stop(), timeout=3.0)
+            except (asyncio.TimeoutError, RuntimeError):
+                # Fallback: cancel if stop hangs
+                if hasattr(log_source, "_writer_task") and log_source._writer_task is not None:
+                    log_source._writer_task.cancel()
+                elif hasattr(log_source, "_stop_event"):
+                    log_source._stop_event.set()
             elapsed = asyncio.get_event_loop().time() - start_time
-            click.echo(click.style(f"\n{'=' * 70}", fg="black"))
-            click.echo(click.style(f"Stopped after {elapsed:.1f}s. "
-                                   f"{incident_count} incident(s), {prediction_count} prediction(s).",
-                                   fg="green"))
-            click.echo(click.style("=" * 70, fg="black"))
+            click.echo(click.style("\n" + "=" * 70, fg="bright_black"))
+            click.echo(click.style(
+                f"Stopped after {elapsed:.1f}s. "
+                f"{incident_count} incident(s), {prediction_count} prediction(s).",
+                fg="green"))
+            click.echo(click.style("=" * 70, fg="bright_black"))
 
     asyncio.run(_run())
 

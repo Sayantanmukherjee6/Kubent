@@ -1,76 +1,92 @@
 # Architecture
 
-## Current Implementation
+## Overview
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    CLI (click)                       │
-│  generate-logs | stream-logs | watch-logs | simulate │
-└──────┬──────────────────────┬───────────────────────┘
-       │                      │
-       ▼                      ▼
-┌──────────────────┐  ┌──────────────────────────────┐
-│ Mock File Log    │  │  LLM Providers (standalone)  │
-│ Source           │  │                              │
-│ src/core/        │  │  BaseLlmProvider (ABC)       │
-│ log_sources/     │  │   ├── LlamaCppProvider       │
-│                  │  │   └── OpenAiProvider         │
-│ - reads mock     │  │                              │
-│   files          │  │  Factory: create_llm_provider│
-│ - streams        │  │      (settings) -> provider  │
-│   appended lines │  │                              │
-│ - start/stop     │  │  Can analyze raw logs via    │
-│   lifecycle      │  │  `python -m src simulate`    │
-└──────────────────┘  └──────────────┬───────────────┘
-       │                             │ (not wired to watcher pipeline)
-       ▼                             │
-┌──────────────────┐                 │
-│ Mock Log         │                 │
-│ Generator        │                 │
-│ mocks/generators/│                 │
-│ log_generator.py │                 │
-└──────────────────┘                 │
-  Generates realistic                │
-  K8s-style logs with:               │
-  - tracebacks, HTTP errors,         │
-    DB failures, OOM kills,          │
-    pod restarts, retry fails        │
-                                       │
-┌──────────────────────────────────────┐
-│         Watcher Subsystem            │
-│                                      │
-│  MockFileLogSource                   │
-│    → LogDetector (regex rules)       │
-│      → ContextBuilder (rolling buf)  │
-│        → DedupTracker                │
-│          → IncidentEvent             │
-└──────────────┬───────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────┐
-│         Predictor Subsystem          │
-│                                      │
-│  HeuristicPredictor                  │
-│    → Rolling window per service      │
-│    → HeuristicRule matching          │
-│      → PredictorEvent                │
-│                                      │
-│  See [predictor.md](predictor.md)    │
-└──────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                      CLI (click)                         │
+│  generate-logs | stream-logs | watch-logs | predict     │
+│  simulate                                               │
+└──────┬───────────────────┬──────────────────┬───────────┘
+       │                   │                  │
+       ▼                   ▼                  ▼
+┌──────────────────┐  ┌────────────────────────────────┐
+│ Log Source       │  │  LLM Providers (standalone)    │
+│ Factory          │  │                                │
+│                  │  │  BaseLlmProvider (ABC)          │
+│ create_log_      │  │   ├── LlamaCppProvider         │
+│ source(settings) │  │   └── OpenAiProvider           │
+│   → mock or      │  │                                │
+│     folder       │  │  Factory: create_llm_provider  │
+└──────┬───────────┘  │     (settings) → provider      │
+       │              │                                │
+   ┌────┴────┐        │  Analyze raw logs via          │
+   │         │        │  `python -m src simulate`      │
+   ▼         ▼        │  (not wired to watcher pipeline│
+┌──────────┐ ┌───────┐│                              │
+│MockFile  │ │Folder ││                              │
+│LogSource │ │Log-   ││                              │
+│          │ │Source ││                              │
+│- writes  │ │- tails││                              │
+│  mock    │ │  *.log││                              │
+│  logs    │ │       ││                              │
+└──────────┘ └───────┘│                              │
+       All CLI commands (stream-logs, watch-logs,     │
+       predict) use create_log_source(settings)       │
+       with optional --source and --log-dir overrides │
+                      │                               │
+┌────────────────────────────────────────────────────┐ │
+│         Watcher Subsystem                          │ │
+│                                                    │ │
+│  BaseLogSource (from factory)                      │ │
+│    → LogDetector (regex rules)                     │ │
+│      → ContextBuilder (rolling buf)                │ │
+│        → DedupTracker                              │ │
+│          → IncidentEvent                           │ │
+└──────────────┬─────────────────────────────────────┘│
+               │                                      │
+               ▼                                      │
+┌────────────────────────────────────────────────────┐│
+│         Predictor Subsystem                        ││
+│                                                    ││
+│  HeuristicPredictor                                ││
+│    → Rolling windows                               ││
+│    → Heuristic rules                               ││
+│      → PredictorEvent                              ││
+│                                                    ││
+│  See [predictor.md](predictor.md)                  ││
+└────────────────────────────────────────────────────┘│
 ```
 
 ## Key Abstractions
 
-### Log Sources
+### Log Sources & Factory
 
 - **`BaseLogSource`** (`src/core/log_sources/base.py`): ABC defining `start()`, `stop()`, and async `stream()` interface.
-- **`MockFileLogSource`**: Reads mock files, appends new lines in a background task, tails via async generator. Note: `MockFileLogSource` directly imports and calls `generate_mock_logs_text` from the generator, so they are tightly coupled rather than independent components.
+- **`create_log_source(settings)`** (`src/core/log_sources/factory.py`): Factory that returns the correct source based on `log_source.type` in settings:
+  - `"mock"` → `MockFileLogSource` (default, generates synthetic K8s logs)
+  - `"folder"` → `FolderLogSource` (tails `*.log` files in a shared directory)
+- **`MockFileLogSource`** (`src/core/log_sources/mock_file_source.py`): Writes mock logs to a file and streams appended lines.
+- **`FolderLogSource`** (`src/core/log_sources/folder_source.py`): Polling-based watcher that tails multiple `*.log` files in a directory.
+
+### CLI Source Selection
+
+All log-consuming CLI commands (`stream-logs`, `watch-logs`, `predict`) use a shared
+`_build_settings(source, log_dir)` helper that applies CLI overrides to Settings,
+then calls `create_log_source(settings)`. No command instantiates a log source directly.
+
+Override source type and directory without modifying config:
+
+```bash
+python -m src stream-logs --source folder --log-dir /tmp/k8s-logs
+python -m src watch-logs --source mock --log-dir /tmp/demo-logs
+python -m src predict --source folder --log-dir /var/log/apps
+```
 
 ### Watcher Pipeline
 
 - **`LogDetector`** (`src/core/watcher/detector.py`): Regex-based rule engine that classifies log lines into incident types with severity levels.
 - **`ContextBuilder`** (`src/core/watcher/context_builder.py`): Maintains a rolling buffer of recent log lines per source and extracts surrounding context around detected incidents.
-- **`RollingBuffer`**: Async-safe bounded in-memory buffer (deque) per source.
 - **`_DedupTracker`**: In-memory deduplication using event fingerprints with TTL-based expiry.
 - **`LogWatcher`** (`src/core/watcher/watcher.py`): Orchestrates the full pipeline — consumes `BaseLogSource.stream()`, runs detection, builds context, deduplicates, yields `IncidentEvent`.
 
@@ -80,13 +96,13 @@
 - **`AnalysisResult`**: Frozen dataclass holding structured LLM output (root_cause, severity, remediation_suggestions, preventive_actions).
 - **`create_llm_provider(settings)`**: Factory that instantiates the correct provider based on `LLM_PROVIDER` in `.env`.
 
-**Note:** Providers exist as independent infrastructure. They can analyze raw logs via `python -m src simulate`, but are NOT yet integrated into the watcher pipeline. The "(not wired to watcher pipeline)" annotation refers specifically to the watcher → provider integration, not the providers themselves (which ARE wired into the `simulate` CLI command).
+**Note:** Providers exist as independent infrastructure. They can analyze raw logs via `python -m src simulate`, but are NOT yet integrated into the watcher pipeline.
 
 ## Design Principles
 
 - **Local-first**: Runs entirely on your machine with a local llama.cpp server.
 - **Minimal dependencies**: No LangChain, CrewAI, or AutoGen — just `asyncio`, `httpx`, and `pydantic`.
-- **Log source abstraction**: Swapping log sources is done by implementing one interface.
+- **Log source abstraction**: Swapping log sources is done via the factory — implement one interface.
 - **Provider abstraction**: Swapping the LLM backend requires changing one environment variable.
 - **Mock-first development**: Full mock log generation with streaming simulation for testing without external infrastructure.
 

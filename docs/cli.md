@@ -8,7 +8,6 @@ All commands are invoked via `python -m src <command>`.
 
 ```bash
 # Generate default (50 lines) to mocks/logs/generated.log
-# Default count comes from MOCK_LOG_COUNT env var (default: 50)
 python -m src generate-logs
 
 # Custom count and output path
@@ -25,24 +24,19 @@ Options:
 
 | Option | Short | Default | Description |
 |---|---|---|---|
-| `--count` | -c | 50 (from MOCK_LOG_COUNT) | Number of log lines to generate |
+| `--count` | -c | 50 | Number of log lines to generate |
 | `--output` | -o | mocks/logs/generated.log | Output file path |
 | `--services` | -s | All configured services | Comma-separated service names |
-| `--severities` | - | info,warn,error,critical | Comma-separated severity levels |
+| `--severities` | — | info,warn,error,critical | Comma-separated severity levels |
 
-### `stream-logs` — Stream mock logs in real-time
+### `stream-logs` — Stream logs in real-time
 
-**Mode 1: Full mock file source** (generates + streams):
+Uses the log source factory. Override source type and directory via `--source` and `--log-dir`.
 
 ```bash
-python -m src stream-logs --duration 10   # Stream for 10 seconds (default duration)
+python -m src stream-logs --duration 10   # Stream for 10 seconds
 python -m src stream-logs --duration 0    # Infinite mode (Ctrl+C to stop)
-```
-
-**Mode 2: Tail an existing file**:
-
-```bash
-python -m src stream-logs --source-file mocks/logs/generated.log
+python -m src stream-logs --source folder --log-dir /tmp/k8s-logs
 ```
 
 Options:
@@ -50,43 +44,109 @@ Options:
 | Option | Short | Default | Description |
 |---|---|---|---|
 | `--duration` | -d | 10 | Seconds to stream (0 = infinite) |
-| `--source-file` | -f | None | Existing log file to tail |
+| `--source-file` | -f | None | Existing log file to tail (bypasses factory) |
+| `--source` | -S | (from config) | Override: mock or folder |
+| `--log-dir` | — | (from config) | Override log directory path |
 
 ### `watch-logs` — Stream logs and detect incidents (no LLM)
 
-Watches a mock log source for errors using regex-based detection, extracts surrounding context, deduplicates noisy events, and prints structured incident summaries.
+Watches a log source for errors using regex-based detection, extracts surrounding context, deduplicates noisy events, and prints structured incident summaries.
 
 ```bash
 python -m src watch-logs --duration 15
 python -m src watch-logs --min-severity high --dedup-ttl 600
-python -m src watch-logs --context-before 10 --context-after 5 --dedup-threshold 3
+python -m src watch-logs --source folder --log-dir /tmp/k8s-logs
 ```
 
 Options:
 
-| Option | Default | Description |
-|---|---|---|
-| `--duration` / `-d` | 15 | Seconds to watch (0 = infinite) |
-| `--min-severity` / `-s` | medium | Minimum severity: low, medium, high, critical |
-| `--dedup-ttl` / `-t` | 300 | Deduplication TTL in seconds |
-| `--dedup-threshold` / `-n` | 1 | Min occurrences before emitting |
-| `--context-before` / `-b` | 5 | Preceding context lines |
-| `--context-after` / `-a` | 3 | Following context lines |
+| Option | Short | Default | Description |
+|---|---|---|---|
+| `--duration` | -d | 15 | Seconds to watch (0 = infinite) |
+| `--min-severity` | -s | medium | low, medium, high, critical |
+| `--dedup-ttl` | -t | 300 | Deduplication TTL in seconds |
+| `--dedup-threshold` | -n | 1 | Min occurrences before emitting |
+| `--context-before` | -b | 5 | Preceding context lines |
+| `--context-after` | -a | 3 | Following context lines |
+| `--source` | -S | (from config) | Override: mock or folder |
+| `--log-dir` | — | (from config) | Override log directory path |
 
-### `predict` — Run predictive anomaly detection
+### `predict` — Stream logs, run watcher + predictor, print predictions
 
-Streams logs through the watcher subsystem and applies heuristic prediction rules.
+Wires the LogWatcher pipeline into HeuristicPredictor so that every detected
+IncidentEvent is fed through the heuristic engine and resulting PredictorEvents
+are printed as color-coded terminal output.
 
 ```bash
+# Default: mock source, 15s duration, medium severity
 python -m src predict
-python -m src predict --duration 30
+
+# Custom duration and severity
+python -m src predict --duration 30 --min-severity high
+
+# Override log source
+python -m src predict --source folder --log-dir /var/log/k8s-apps
+python -m src predict --source mock --log-dir /tmp/demo-logs
+
+# Combine all options
+python -m src predict -S folder -d 20 -s high -t 600 -n 2 --log-dir /tmp/logs
 ```
+
+**Output format:**
+
+```
+[HIGH]  #1
+  service   = payment-service
+  pattern   = Repeated HTTP 5xx error spikes detected
+  trigger_count = 5
+  related   = abc123def456
+
+[CRITICAL]  #2
+  service   = auth-service
+  pattern   = Repeated OOMKilled events detected
+  trigger_count = 3
+```
+
+Options:
+
+| Option | Short | Default | Description |
+|---|---|---|---|
+| `--duration` | -d | 15 | Seconds to watch (0 = infinite) |
+| `--min-severity` | -s | medium | low, medium, high, critical |
+| `--dedup-ttl` | -t | 300 | Deduplication TTL in seconds |
+| `--dedup-threshold` | -n | 1 | Min occurrences before emitting |
+| `--source` | -S | (from config) | Override: mock or folder |
+| `--log-dir` | — | (from config) | Override log directory path |
 
 ### `simulate` — Generate mock logs and send to LLM for analysis
 
 ```bash
 python -m src simulate
 python -m src simulate --count 100 --provider openai
+```
+
+Options:
+
+| Option | Short | Default | Description |
+|---|---|---|---|
+| `--count` | — | 50 | Number of mock log lines |
+| `--provider` | — | (from config) | Override LLM provider |
+
+## Log Source Overrides
+
+All commands that consume logs (`stream-logs`, `watch-logs`, `predict`) use the
+log source factory. Override the source type and directory without modifying
+`config/config.yaml`:
+
+```bash
+# Override source type
+python -m src predict --source folder
+
+# Override directory
+python -m src predict --log-dir /tmp/k8s-logs
+
+# Override both
+python -m src predict --source folder --log-dir /tmp/k8s-logs
 ```
 
 ## Help
@@ -96,5 +156,6 @@ python -m src --help
 python -m src generate-logs --help
 python -m src stream-logs --help
 python -m src watch-logs --help
+python -m src predict --help
 python -m src simulate --help
 ```

@@ -25,12 +25,12 @@ Example
 
 .. code-block:: python
 
-    from src.core.log_sources.mock_file_source import MockFileLogSource
+    from src.core.log_sources.factory import create_log_source
     from src.core.watcher import LogWatcher, WatcherSeverity
     from src.config.settings import Settings
 
     settings = Settings()
-    source = MockFileLogSource(settings)
+    source = create_log_source(settings)
 
     watcher = LogWatcher(min_severity=WatcherSeverity.MEDIUM)
     async for incident in watcher.watch(source):
