@@ -383,18 +383,4 @@ because the architecture already simulates:
 
 very realistically.
 
----
 
-# Next Phase (After Validation)
-
-Only after deterministic validation succeeds should the LLM layer be integrated:
-
-```text
-PredictorEvent
-    ↓
-LLM summary
-    ↓
-Email alert
-```
-
-This should be the final hackathon milestone.
