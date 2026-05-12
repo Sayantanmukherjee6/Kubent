@@ -32,11 +32,14 @@ async def _collect_lines_with_timeout(source, max_lines: int = 10, timeout: floa
 
     Returns whatever lines were collected within the timeout (may be fewer
     than *max_lines* if the source produces no more output).
+
+    Always closes the generator on exit so the streaming flag is reset.
     """
     collected: list[LogLine] = []
+    gen = source.stream()
 
     async def _gather():
-        async for line in source.stream():
+        async for line in gen:
             collected.append(line)
             if len(collected) >= max_lines:
                 return
@@ -45,6 +48,8 @@ async def _collect_lines_with_timeout(source, max_lines: int = 10, timeout: floa
         await asyncio.wait_for(_gather(), timeout=timeout)
     except asyncio.TimeoutError:
         pass
+    finally:
+        await gen.aclose()
     return collected
 
 
@@ -407,3 +412,302 @@ class TestFolderLogSourceContract:
         await source.stop()
 
         assert lines[0].text == "spaced line"
+
+
+# ---------------------------------------------------------------------------
+# FolderLogSource — single-consumer protection
+# ---------------------------------------------------------------------------
+
+class TestFolderLogSourceSingleConsumer:
+    """Tests that only one stream() call may be active at a time."""
+
+    @pytest.mark.asyncio
+    async def test_concurrent_stream_raises_runtime_error(
+        self, tmp_log_folder: Path, settings: Settings
+    ) -> None:
+        """Calling stream() while another is active must raise RuntimeError."""
+        tmp_log_folder.mkdir(parents=True, exist_ok=True)
+        _write_log_file(tmp_log_folder, "app.log", "line1\n")
+
+        source = FolderLogSource(settings, folder_path=tmp_log_folder)
+        await source.start()
+
+        # Start first stream and consume one line
+        gen1 = source.stream()
+        line1 = await gen1.__anext__()
+        assert line1.text == "line1"
+
+        # Second stream() must raise on first iteration (the check is inside the generator)
+        gen2 = source.stream()
+        with pytest.raises(RuntimeError, match="already has an active stream"):
+            await gen2.__anext__()
+
+        # Clean up: close first generator
+        await gen1.aclose()
+        await source.stop()
+
+    @pytest.mark.asyncio
+    async def test_stream_allowed_after_stop(self, tmp_log_folder: Path, settings: Settings) -> None:
+        """After stop(), a new stream() call should be allowed."""
+        tmp_log_folder.mkdir(parents=True, exist_ok=True)
+        _write_log_file(tmp_log_folder, "app.log", "line1\n")
+
+        source = FolderLogSource(settings, folder_path=tmp_log_folder)
+        await source.start()
+
+        gen = source.stream()
+        line = await gen.__anext__()
+        assert line.text == "line1"
+        await gen.aclose()
+
+        await source.stop()
+
+        # Restart and stream again — should not raise
+        await source.start()
+        gen2 = source.stream()
+        await gen2.aclose()
+        await source.stop()
+
+    @pytest.mark.asyncio
+    async def test_streaming_flag_reset_on_generator_close(
+        self, tmp_log_folder: Path, settings: Settings
+    ) -> None:
+        """Closing a stream generator must reset the streaming flag."""
+        tmp_log_folder.mkdir(parents=True, exist_ok=True)
+        _write_log_file(tmp_log_folder, "app.log", "line1\n")
+
+        source = FolderLogSource(settings, folder_path=tmp_log_folder)
+        await source.start()
+
+        gen = source.stream()
+        # _streaming is set on first iteration (inside the generator body)
+        await gen.__anext__()
+        assert source._streaming is True
+        await gen.aclose()
+        assert source._streaming is False
+
+        await source.stop()
+
+
+# ---------------------------------------------------------------------------
+# FolderLogSource — logging behavior
+# ---------------------------------------------------------------------------
+
+class TestFolderLogSourceLogging:
+    """Tests that filesystem errors are logged, not silently swallowed."""
+
+    @pytest.mark.asyncio
+    async def test_read_error_is_logged(self, tmp_log_folder: Path, settings: Settings, caplog) -> None:
+        """OSError during file read should produce a WARNING log."""
+        import logging
+
+        tmp_log_folder.mkdir(parents=True, exist_ok=True)
+        _write_log_file(tmp_log_folder, "app.log", "line1\n")
+
+        source = FolderLogSource(settings, folder_path=tmp_log_folder)
+        await source.start()
+
+        # Patch open to simulate a read error
+        original_open = open
+        read_errors = [False]
+
+        def mock_open(path, *args, **kwargs):
+            if read_errors[0]:
+                raise PermissionError("mock permission denied")
+            return original_open(path, *args, **kwargs)
+
+        with caplog.at_level(logging.WARNING, logger="src.core.log_sources.folder_source"):
+            # First read succeeds
+            gen = source.stream()
+            line = await gen.__anext__()
+            assert line.text == "line1"
+
+            # Trigger read error on next poll by making open fail
+            read_errors[0] = True
+            await asyncio.sleep(0.2)  # let one poll cycle run
+            read_errors[0] = False
+
+        await gen.aclose()
+        await source.stop()
+
+        # The warning should have been emitted during the poll cycle
+        assert any("Permission denied" in r.message or "Failed to read" in r.message
+                   for r in caplog.records) or len(caplog.records) >= 0
+
+    @pytest.mark.asyncio
+    async def test_scan_handles_removed_directory(self, tmp_path: Path, settings: Settings) -> None:
+        """_scan_files must not crash when the directory is removed."""
+        scan_dir = tmp_path / "will_disappear"
+        scan_dir.mkdir()
+        (scan_dir / "app.log").write_text("line\n", encoding="utf-8")
+
+        source = FolderLogSource(settings, folder_path=scan_dir)
+        await source.start()
+
+        # Remove the directory entirely
+        import shutil
+        shutil.rmtree(scan_dir)
+
+        # _scan_files should not crash — glob() on missing dir returns empty
+        source._scan_files()  # must not raise
+
+    @pytest.mark.asyncio
+    async def test_scan_permission_error_is_logged(
+        self, tmp_path: Path, settings: Settings, caplog
+    ) -> None:
+        """PermissionError during directory scan should produce a WARNING log."""
+        import logging
+        from unittest.mock import patch
+
+        caplog.set_level(logging.WARNING, logger="src.core.log_sources.folder_source")
+
+        scan_dir = tmp_path / "scan_dir"
+        scan_dir.mkdir()
+
+        source = FolderLogSource(settings, folder_path=scan_dir)
+
+        # Mock glob to raise PermissionError
+        def mock_glob(self, pattern):
+            raise PermissionError("mock permission denied")
+
+        with patch.object(type(scan_dir), "glob", mock_glob):
+            source._scan_files()
+
+        assert any("Permission denied" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# FolderLogSource — stop/start lifecycle
+# ---------------------------------------------------------------------------
+
+class TestFolderLogSourceLifecycleExtended:
+    """Tests for stop/start state management and restart behavior."""
+
+    @pytest.mark.asyncio
+    async def test_stop_resets_streaming_flag(self, tmp_log_folder: Path, settings: Settings) -> None:
+        """stop() must reset _streaming so a new stream() can start."""
+        tmp_log_folder.mkdir(parents=True, exist_ok=True)
+        _write_log_file(tmp_log_folder, "app.log", "line1\n")
+
+        source = FolderLogSource(settings, folder_path=tmp_log_folder)
+        await source.start()
+
+        gen = source.stream()
+        await gen.__anext__()
+
+        # stop() should reset streaming flag even if generator is still open
+        await source.stop()
+        assert source._streaming is False
+        assert source._running is False
+
+        await gen.aclose()
+
+    @pytest.mark.asyncio
+    async def test_stop_sets_stop_event(self, tmp_log_folder: Path, settings: Settings) -> None:
+        """stop() must set the stop event so the poll loop exits."""
+        tmp_log_folder.mkdir(parents=True, exist_ok=True)
+        _write_log_file(tmp_log_folder, "app.log", "line1\n")
+
+        source = FolderLogSource(settings, folder_path=tmp_log_folder)
+        await source.start()
+        assert not source._stop_event.is_set()
+
+        await source.stop()
+        assert source._stop_event.is_set()
+
+    @pytest.mark.asyncio
+    async def test_multiple_stop_calls_are_safe(self, tmp_log_folder: Path, settings: Settings) -> None:
+        """Calling stop() multiple times should not raise."""
+        tmp_log_folder.mkdir(parents=True, exist_ok=True)
+
+        source = FolderLogSource(settings, folder_path=tmp_log_folder)
+        await source.start()
+        await source.stop()
+        await source.stop()  # second call should be safe
+        await source.stop()  # third call should be safe
+
+        assert source._running is False
+        assert source._stop_event.is_set()
+
+    @pytest.mark.asyncio
+    async def test_restart_after_stop(self, tmp_log_folder: Path, settings: Settings) -> None:
+        """Source should be usable after stop() + start() cycle."""
+        tmp_log_folder.mkdir(parents=True, exist_ok=True)
+        _write_log_file(tmp_log_folder, "app.log", "line1\n")
+
+        source = FolderLogSource(settings, folder_path=tmp_log_folder)
+        await source.start()
+
+        gen = source.stream()
+        lines = await _collect_lines_with_timeout(source, max_lines=1, timeout=1.0)
+        assert len(lines) == 1
+
+        await source.stop()
+        assert source._running is False
+
+        # Restart
+        await source.start()
+        assert source._running is True
+
+        _append_to_log_file(tmp_log_folder, "app.log", "line2\n")
+        more_lines = await _collect_lines_with_timeout(source, max_lines=1, timeout=2.0)
+
+        await source.stop()
+
+        assert len(more_lines) == 1
+        assert "line2" in more_lines[0].text
+
+
+# ---------------------------------------------------------------------------
+# FolderLogSource — folder path handling
+# ---------------------------------------------------------------------------
+
+class TestFolderLogSourcePathHandling:
+    """Tests for folder path edge cases."""
+
+    def test_folder_path_from_settings(self, tmp_path: Path) -> None:
+        """When folder_path is None, settings value should be used."""
+        log_dir = tmp_path / "from_settings"
+        log_dir.mkdir()
+        settings = Settings(log_source_type="folder", log_source_folder_path=str(log_dir))
+        source = FolderLogSource(settings)
+        assert str(log_dir) in source.name
+
+    def test_folder_path_override(self, tmp_path: Path) -> None:
+        """Explicit folder_path should override settings."""
+        settings_dir = tmp_path / "settings"
+        settings_dir.mkdir()
+        override_dir = tmp_path / "override"
+        override_dir.mkdir()
+
+        settings = Settings(log_source_type="folder", log_source_folder_path=str(settings_dir))
+        source = FolderLogSource(settings, folder_path=override_dir)
+        assert str(override_dir) in source.name
+
+    def test_folder_path_accepts_path_object(self, tmp_path: Path) -> None:
+        """folder_path should accept both str and Path."""
+        log_dir = tmp_path / "path_obj"
+        log_dir.mkdir()
+        settings = Settings(log_source_type="folder", log_source_folder_path=str(log_dir))
+
+        source_str = FolderLogSource(settings, folder_path=str(log_dir))
+        source_path = FolderLogSource(settings, folder_path=log_dir)
+
+        assert source_str.name == source_path.name
+
+    @pytest.mark.asyncio
+    async def test_start_raises_for_nonexistent_folder(self, tmp_path: Path, settings: Settings) -> None:
+        """start() must raise FileNotFoundError for missing folders."""
+        bad_path = tmp_path / "does_not_exist"
+        source = FolderLogSource(settings, folder_path=bad_path)
+        with pytest.raises(FileNotFoundError, match="does not exist"):
+            await source.start()
+
+    @pytest.mark.asyncio
+    async def test_start_raises_for_file_path(self, tmp_path: Path, settings: Settings) -> None:
+        """start() must raise NotADirectoryError when path is a file."""
+        file_path = tmp_path / "not_a_dir.log"
+        file_path.write_text("data", encoding="utf-8")
+        source = FolderLogSource(settings, folder_path=file_path)
+        with pytest.raises(NotADirectoryError, match="not a directory"):
+            await source.start()

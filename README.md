@@ -99,6 +99,11 @@ log_source:
 
 Or via environment variable: `LOG_SOURCE_TYPE=folder`
 
+**Folder source notes:**
+- Only `*.log` files in the configured directory are watched
+- Single-consumer: only one `stream()` call may be active at a time (raises `RuntimeError` otherwise)
+- Filesystem errors (permission denied, missing files) are logged at WARNING level
+
 ## Predict Workflow
 
 The `predict` command wires the full watcher + predictor pipeline together for real-time

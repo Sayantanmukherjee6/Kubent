@@ -172,3 +172,16 @@ project/
 ├── .env.example
 └── pyproject.toml                # Project metadata + pytest config
 ```
+
+## Logging
+
+`FolderLogSource` logs filesystem errors (permission denied, missing files, stat failures)
+at WARNING level via the standard `logging` module. To see these messages:
+
+```python
+import logging
+logging.getLogger("src.core.log_sources.folder_source").setLevel(logging.WARNING)
+logging.basicConfig(level=logging.WARNING)
+```
+
+No external observability frameworks are used — only the stdlib `logging` module.

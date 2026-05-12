@@ -11,11 +11,14 @@ standard library.
 from __future__ import annotations
 
 import asyncio
+import logging
 from pathlib import Path
 from typing import Dict
 
 from src.config.settings import Settings
 from src.core.log_sources.base import BaseLogSource, LogLine
+
+logger = logging.getLogger(__name__)
 
 
 class FolderLogSource(BaseLogSource):
@@ -35,6 +38,11 @@ class FolderLogSource(BaseLogSource):
         - Ignores non-``*.log`` files
         - Handles missing/empty files gracefully
         - Async-safe (all I/O on the event loop thread)
+        - Single-consumer: only one ``stream()`` call may be active at a time
+
+    Logging:
+        Filesystem errors (permission denied, missing files, stat failures)
+        are logged via the standard ``logging`` module at WARNING level.
     """
 
     POLL_INTERVAL: float = 0.5  # seconds between polls
@@ -44,6 +52,7 @@ class FolderLogSource(BaseLogSource):
         self._folder_path = Path(folder_path) if folder_path else Path(settings.log_source.folder_path)
         self._running = False
         self._stop_event = asyncio.Event()
+        self._streaming = False  # single-consumer guard
         # offset tracking: filepath_str -> current byte offset
         self._offsets: Dict[str, int] = {}
 
@@ -68,17 +77,27 @@ class FolderLogSource(BaseLogSource):
         self._scan_files()
 
     async def stop(self) -> None:
-        """Stop polling."""
+        """Stop polling and reset internal state for clean restart."""
         self._running = False
         self._stop_event.set()
+        self._streaming = False
 
     async def stream(self):
         """Async generator that yields LogLine objects as new lines appear.
+
+        Only one consumer may iterate this generator at a time. Calling
+        ``stream()`` while another iteration is active raises ``RuntimeError``.
 
         On each call, re-scans the directory for ``*.log`` files and reads
         any new or updated content.  This allows callers to obtain fresh
         lines even after the previous iteration stopped (e.g. via ``break``).
         """
+        if self._streaming:
+            raise RuntimeError(
+                "FolderLogSource already has an active stream(). "
+                "Only one consumer is allowed at a time."
+            )
+        self._streaming = True
         try:
             # Re-scan at the start so newly-added files are picked up
             self._scan_files()
@@ -90,7 +109,8 @@ class FolderLogSource(BaseLogSource):
                     continue
                 try:
                     current_size = filepath.stat().st_size
-                except OSError:
+                except OSError as exc:
+                    logger.warning("Failed to stat %s: %s", filepath, exc)
                     continue
                 # Handle truncation: if file shrank, restart from beginning
                 if current_size < offset:
@@ -123,7 +143,8 @@ class FolderLogSource(BaseLogSource):
 
                     try:
                         current_size = filepath.stat().st_size
-                    except OSError:
+                    except OSError as exc:
+                        logger.warning("Failed to stat %s: %s", filepath, exc)
                         continue
 
                     if current_size < self._offsets.get(filepath_str, 0):
@@ -136,6 +157,7 @@ class FolderLogSource(BaseLogSource):
         finally:
             # Ensure stop_event is set when generator is closed (e.g. via break)
             self._stop_event.set()
+            self._streaming = False
 
     def _scan_files(self) -> None:
         """Discover all *.log files in the folder and initialize offsets."""
@@ -146,9 +168,10 @@ class FolderLogSource(BaseLogSource):
                     if filepath_str not in self._offsets:
                         # Start from 0 so existing content is yielded on first pass
                         self._offsets[filepath_str] = 0
-        except OSError:
-            # Directory disappeared between scans - handled in stream loop
-            pass
+        except PermissionError as exc:
+            logger.warning("Permission denied scanning directory %s: %s", self._folder_path, exc)
+        except OSError as exc:
+            logger.warning("Failed to scan directory %s: %s", self._folder_path, exc)
 
     async def _read_new_lines(self, filepath: Path, start_offset: int):
         """Read new lines from *filepath* starting at *start_offset*.
@@ -161,7 +184,11 @@ class FolderLogSource(BaseLogSource):
                 f.seek(start_offset)
                 new_data = f.read()
                 new_offset = f.tell()
-        except OSError:
+        except PermissionError as exc:
+            logger.warning("Permission denied reading %s: %s", filepath, exc)
+            return
+        except OSError as exc:
+            logger.warning("Failed to read %s: %s", filepath, exc)
             return
 
         self._offsets[str(filepath)] = new_offset

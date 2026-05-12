@@ -96,6 +96,15 @@ log_source:
   folder_path: /tmp/k8s-shared-logs
 ```
 
+**Expected folder layout:**
+```
+/tmp/k8s-shared-logs/
+├── auth-service.log
+├── payment-service.log
+└── gateway.log
+```
+Only `*.log` files are watched. All other files are ignored.
+
 **Lifecycle:**
 ```python
 source = FolderLogSource(settings, folder_path="/tmp/k8s-shared-logs")
@@ -113,6 +122,26 @@ await source.stop()
 - Handles missing/empty files gracefully — no crashes on file removal
 - Discovers new files dynamically — files added after `start()` are picked up on the next poll
 - Handles file truncation — if a file shrinks, offset resets to 0
+
+**Single-consumer limitation:**
+Only one `stream()` call may be active at a time. Calling `stream()` while
+another iteration is in progress raises `RuntimeError`. This prevents
+duplicate or missed lines from concurrent consumers.
+
+**Logging behavior:**
+Filesystem errors are logged at WARNING level using the standard `logging`
+module. Errors that are logged include:
+- Permission denied when reading a log file
+- Permission denied when scanning the directory
+- Failed `stat()` calls on tracked files
+- Failed directory scans (e.g. directory removed between polls)
+
+Configure logging to see these messages:
+```python
+import logging
+logging.getLogger("src.core.log_sources.folder_source").setLevel(logging.WARNING)
+logging.basicConfig(level=logging.WARNING)
+```
 
 ## Mock Log Generator
 
