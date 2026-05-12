@@ -119,50 +119,67 @@ project/
 ├── config/
 │   └── config.yaml               # Central runtime configuration
 ├── src/
+│   ├── __init__.py
 │   ├── __main__.py               # CLI entrypoint (click-based)
 │   ├── config/
+│   │   ├── __init__.py
 │   │   └── settings.py           # Settings from config.yaml + env vars
 │   ├── core/
+│   │   ├── __init__.py
 │   │   ├── log_sources/
+│   │   │   ├── __init__.py
 │   │   │   ├── base.py           # BaseLogSource ABC + LogLine dataclass
 │   │   │   ├── factory.py        # create_log_source(settings) factory
 │   │   │   ├── mock_file_source.py  # Mock file-based log source
 │   │   │   └── folder_source.py  # Tails *.log files in a directory
 │   │   ├── watcher/
+│   │   │   ├── __init__.py
 │   │   │   ├── watcher.py        # LogWatcher orchestrator
-│   │   │   ├── detector.py       # Regex-based rule engine
+│   │   │   ├── detector.py       # Regex-based rule engine (26 rules)
 │   │   │   ├── context_builder.py  # Rolling buffer + context extraction
 │   │   │   └── models.py         # WatcherSeverity, IncidentEvent, etc.
 │   │   └── predictor/
-│   │       ├── predictor.py      # HeuristicPredictor
+│   │       ├── __init__.py
+│   │       ├── predictor.py      # HeuristicPredictor (4 rules)
 │   │       └── models.py         # RiskLevel, PredictorEvent
 │   ├── providers/
+│   │   ├── __init__.py
 │   │   ├── base.py               # Abstract base class + AnalysisResult
 │   │   ├── llama_cpp.py          # Local llama.cpp provider
 │   │   ├── openai.py             # OpenAI API provider
 │   │   ├── factory.py            # Provider creation factory
 │   │   └── retry.py              # Retry logic for LLM calls
 │   └── utils/
+│       └── __init__.py
 ├── tests/
+│   ├── __init__.py
 │   ├── unit/
+│   │   ├── __init__.py
 │   │   ├── test_config.py
 │   │   ├── test_log_sources.py
 │   │   ├── test_folder_source.py
+│   │   ├── test_cli_factory.py
 │   │   ├── predictor/
+│   │   │   ├── __init__.py
 │   │   │   └── test_predictor.py
 │   │   ├── providers/
+│   │   │   ├── __init__.py
 │   │   │   ├── test_base.py
 │   │   │   └── test_retry.py
 │   │   └── watcher/
+│   │       ├── __init__.py
 │   │       ├── test_context_builder.py
 │   │       ├── test_dedup.py
 │   │       └── test_detector.py
 │   └── integration/
+│       ├── __init__.py
 │       ├── test_llm_pipeline.py
 │       ├── test_log_sources.py
 │       ├── predictor/
+│       │   ├── __init__.py
 │       │   └── test_predict_flow.py
 │       └── watcher/
+│           ├── __init__.py
 │           ├── test_multi_service.py
 │           └── test_watcher_flow.py
 ├── mocks/

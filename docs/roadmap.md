@@ -66,12 +66,15 @@ Key components:
 
 ## Phase 3 — Real Log Sources
 
+Implemented:
+
+* ✅ Folder-based log ingestion (`FolderLogSource` — tails `*.log` files in a directory)
+* ✅ Configurable log source selection (factory + `--source` / `--log-dir` CLI overrides)
+
 Planned:
 
-* [ ] Folder-based log ingestion
-* [ ] Kubernetes log ingestion (`kubectl logs`) (Not for POC, but future extension)
-* [ ] Loki/Grafana log ingestion (Not for POC, but future extension)
-* [ ] Configurable log source selection (Not for POC, but future extension)
+* [ ] Kubernetes log ingestion (`kubectl logs`)
+* [ ] Loki/Grafana log ingestion
 
 Goal:
 Support realistic production-style log replay and live tailing without changing the watcher/predictor pipeline.

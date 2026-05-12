@@ -38,12 +38,12 @@ async for incident in watcher.watch(source):
 
 ### `detector.py` — LogDetector
 
-Regex-based rule engine with 32 built-in detection rules covering:
+Regex-based rule engine with 26 built-in detection rules covering:
 
 - **CRITICAL** (7 rules): OOMKilled, OutOfMemoryKill, NetworkPartition, ClusterQuorumRisk, DataCorruption, DatabaseFailover, SSLCertificateExpired
-- **HIGH** (8 rules): ExceptionTraceback, HTTP5xx, ConnectionRefused, Timeout, CircuitBreakerOpen, RetryExhausted, CrashLoopBackOff, DiskSpaceCritical
+- **HIGH** (9 rules): ExceptionTraceback, HTTP5xx, ConnectionRefused (2 patterns), Timeout, CircuitBreakerOpen, RetryExhausted, CrashLoopBackOff, DiskSpaceCritical
 - **MEDIUM** (5 rules): ErrorMessage, RedisError, KubernetesProbeFailed, ConsumerLag, MalformedResponse
-- **LOW** (4 rules): WarningMessage, RetryAttempt, CircuitBreakerHalfOpen, MemoryThreshold, LatencyThreshold
+- **LOW** (5 rules): WarningMessage, RetryAttempt, CircuitBreakerHalfOpen, MemoryThreshold, LatencyThreshold
 
 Rules are evaluated in order; the first match wins. Custom rules can be added at runtime via `add_rule()`.
 

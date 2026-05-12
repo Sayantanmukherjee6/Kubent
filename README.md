@@ -1,6 +1,6 @@
 # Kubernetes Agent — AI-Powered Observability Assistant
 
-An AI-powered observability assistant that monitors simulated Kubernetes/Grafana logs, detects errors, and sends them to an LLM for root cause analysis, severity classification, remediation suggestions, and preventive actions.
+Monitors simulated Kubernetes/Grafana logs, detects errors via regex-based rules, and predicts recurring failure patterns using deterministic heuristics. LLM analysis is available as a standalone tool (`simulate`) but is not yet wired into the watcher pipeline.
 
 ## Quick Start
 
@@ -18,12 +18,13 @@ python -m src simulate
 | [Architecture](docs/architecture.md) | System overview, key abstractions, design principles |
 | [Providers](docs/providers.md) | LLM backends (llama.cpp, OpenAI), factory, request flow |
 | [Log Sources](docs/log_sources.md) | BaseLogSource abstraction, mock file source, folder source, log generator |
-| [Watcher](docs/watcher.md) | Log monitoring and analysis trigger subsystem |
+| [Watcher](docs/watcher.md) | Log monitoring, regex detection (26 rules), context, dedup |
+| [Predictor](docs/predictor.md) | Heuristic prediction engine (4 rules), rolling windows |
 | [CLI](docs/cli.md) | All commands: generate-logs, stream-logs, watch-logs, predict, simulate |
 | [Development](docs/development.md) | Prerequisites, setup, config reference, folder structure |
 | [Testing](docs/testing.md) | Test architecture, running tests, coverage by module |
 | [Prompting](docs/prompting.md) | System prompt format and structured JSON output |
-| [Roadmap](docs/roadmap.md) | Planned phases (real log sources, web interface, advanced AI) |
+| [Roadmap](docs/roadmap.md) | Implemented vs planned phases |
 
 ## Architecture
 
