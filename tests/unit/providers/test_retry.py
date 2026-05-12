@@ -13,11 +13,12 @@ class _HttpError(Exception):
     """Generic HTTP error (not retryable)."""
 
 
-class _Response:
+class _Response(Exception):
     """Minimal mock response with a status_code attribute."""
 
     def __init__(self, status_code: int) -> None:
         self.status_code = status_code
+        super().__init__(f"HTTP {status_code}")
 
     def __repr__(self) -> str:
         return f"<_Response {self.status_code}>"
@@ -199,7 +200,7 @@ async def test_exponential_backoff_delays() -> None:
 
     await retry(_fn)
 
-    # attempt 0 → delay = 1s (2^1)
-    # attempt 1 → delay = 2s (2^2)
-    assert abs(timestamps[1] - timestamps[0] - BASE_DELAY * 2) < 0.5
-    assert abs(timestamps[2] - timestamps[1] - BASE_DELAY * 4) < 0.5
+    # attempt 0 → delay = 1s (BASE_DELAY * 2^0)
+    # attempt 1 → delay = 2s (BASE_DELAY * 2^1)
+    assert abs(timestamps[1] - timestamps[0] - BASE_DELAY) < 0.5
+    assert abs(timestamps[2] - timestamps[1] - BASE_DELAY * 2) < 0.5
