@@ -173,7 +173,7 @@ python -m src generate-logs --count 100
 python -m src stream-logs --duration 15
 python -m src watch-logs --duration 15
 python -m src predict --duration 15
-python -m src simulate
+python -m src simulate (depreciated, will be removed soon)
 pytest -v
 echo 'LLM_PROVIDER=openai' >> .env   # Switch to OpenAI
 ```
