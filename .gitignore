@@ -28,6 +28,7 @@ Thumbs.db
 # MD files
 TODO.md
 codereview.md
+testing.md
 
 # logs
 mocks/logs/mock_stream.log

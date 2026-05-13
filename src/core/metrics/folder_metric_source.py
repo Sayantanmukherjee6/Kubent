@@ -61,7 +61,7 @@ class FolderMetricSource(BaseMetricSource):
     def __init__(self, settings: Settings, folder_path: str | Path | None = None) -> None:
         self._settings = settings
         self._folder_path = Path(folder_path) if folder_path else Path(
-            settings.metrics.folder_path
+            settings.metrics.source.folder_path
         )
         self._running = False
         self._stop_event = asyncio.Event()
