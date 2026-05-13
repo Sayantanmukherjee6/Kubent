@@ -180,6 +180,15 @@ metrics:
 
 Or via environment variable: `METRICS_SOURCE_TYPE=folder`
 
+**Stream interval:** The interval between metric samples is controlled by
+`metrics.stream_interval_seconds` in `config/config.yaml` (default: `5`). This is independent
+of the log interval (`mock.interval`). Override via `METRICS_STREAM_INTERVAL` environment variable.
+
+```yaml
+metrics:
+  stream_interval_seconds: 5        # seconds between metric samples
+```
+
 ## Statistical Metric Predictor (Lightweight Forecasting)
 
 The agent includes a **lightweight statistical forecasting** engine that predicts

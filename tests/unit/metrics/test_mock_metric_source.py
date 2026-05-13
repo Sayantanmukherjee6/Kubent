@@ -36,7 +36,7 @@ def settings(tmp_path: Path) -> Settings:
     return Settings(
         metrics_source_type="mock",
         mock_services=["auth-service", "payment-service"],
-        mock_log_interval=0.1,
+        metrics_stream_interval_seconds=0.1,
     )
 
 
@@ -121,7 +121,7 @@ class TestMockMetricSourceStreaming:
         custom_settings = Settings(
             metrics_source_type="mock",
             mock_services=["svc-a", "svc-b", "svc-c"],
-            mock_log_interval=0.1,
+            metrics_stream_interval_seconds=0.1,
         )
         source = MockMetricSource(custom_settings)
         await source.start()
@@ -210,3 +210,81 @@ class TestMockMetricSourceTrends:
 
         # At least one metric should have changed (deterministic progression)
         assert initial_samples != later_samples or True  # trends may not change in short time
+
+
+class TestMockMetricSourceIntervalConfig:
+    """Tests for metric stream interval configuration."""
+
+    def test_interval_uses_metrics_config(self) -> None:
+        """MockMetricSource must read interval from settings.metrics.stream_interval_seconds."""
+        settings = Settings(
+            metrics_source_type="mock",
+            mock_services=["auth-service"],
+            metrics_stream_interval_seconds=3.5,
+        )
+        source = MockMetricSource(settings)
+        assert source._interval == 3.5
+
+    def test_interval_ignores_mock_log_interval(self) -> None:
+        """The mock log interval must NOT affect the metric stream interval."""
+        settings = Settings(
+            metrics_source_type="mock",
+            mock_services=["auth-service"],
+            mock_log_interval=99.0,
+            metrics_stream_interval_seconds=2.0,
+        )
+        source = MockMetricSource(settings)
+        assert source._interval == 2.0
+
+    def test_interval_defaults_to_config_yaml_value(self) -> None:
+        """When no override is provided, the config.yaml default (5.0) is used."""
+        settings = Settings(metrics_source_type="mock")
+        source = MockMetricSource(settings)
+        assert source._interval == 5.0
+
+    def test_interval_override_via_constructor(self) -> None:
+        """Constructor override for metrics_stream_interval_seconds must be respected."""
+        settings = Settings(
+            metrics_source_type="mock",
+            metrics_stream_interval_seconds=0.25,
+        )
+        source = MockMetricSource(settings)
+        assert source._interval == 0.25
+
+    @pytest.mark.asyncio
+    async def test_stream_timing_respects_interval(self) -> None:
+        """Background samples should be emitted at the configured interval."""
+        import time
+
+        settings = Settings(
+            metrics_source_type="mock",
+            mock_services=["auth-service"],
+            metrics_stream_interval_seconds=0.1,
+        )
+        source = MockMetricSource(settings)
+        await source.start()
+
+        # Collect background samples and measure timing
+        timestamps = []
+        gen = source.stream()
+
+        # Skip initial samples (yielded immediately)
+        count = 0
+        async for sample in gen:
+            if count < 2:
+                count += 1
+                continue
+            timestamps.append(time.monotonic())
+            if len(timestamps) >= 3:
+                break
+
+        await gen.aclose()
+        await source.stop()
+
+        # Verify intervals between background samples are roughly consistent
+        if len(timestamps) >= 2:
+            deltas = [timestamps[i + 1] - timestamps[i] for i in range(len(timestamps) - 1)]
+            for delta in deltas:
+                # Allow generous tolerance (0.05-0.5s) for async timing
+                assert delta >= 0.05
+                assert delta <= 0.5

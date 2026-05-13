@@ -98,6 +98,25 @@ llm:
 | `METRICS_MEMORY_THRESHOLD` | `90.0` | Memory alert threshold percentage |
 | `METRICS_STREAM_INTERVAL` | `5.0` | Seconds between metric samples |
 
+### Metric Stream Interval
+
+The metric streaming interval is controlled by `metrics.stream_interval_seconds` in `config/config.yaml`
+(default: `5.0`). This is the **only** interval setting used by `MockMetricSource` — the log
+interval (`mock.interval`) is independent and does not affect metric generation.
+
+```yaml
+# config/config.yaml
+metrics:
+  stream_interval_seconds: 5        # seconds between metric samples
+```
+
+Override via environment variable: `METRICS_STREAM_INTERVAL=2.0`
+
+Override programmatically:
+```python
+settings = Settings(metrics_stream_interval_seconds=0.5)
+```
+
 ## Watcher Configuration
 
 Watcher behavior is controlled via constructor parameters (not exposed as environment variables):

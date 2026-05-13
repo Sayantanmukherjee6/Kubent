@@ -72,7 +72,7 @@ class MockMetricSource(BaseMetricSource):
     def __init__(self, settings: Settings, scenarios: List[str] | None = None) -> None:
         self._settings = settings
         self._services: List[str] = list(settings.mock.services)
-        self._interval: float = getattr(settings, "mock_log_interval", 1.0)
+        self._interval: float = settings.metrics.stream_interval_seconds
         self._running = False
         self._queue: asyncio.Queue[MetricSample] = asyncio.Queue()
 
