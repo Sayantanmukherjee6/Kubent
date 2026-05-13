@@ -288,6 +288,70 @@ Validate:
 
 ---
 
+## STEP 4 — Validate CPU Anomaly Detection
+
+Run:
+
+```bash
+python -m src predict-metrics --duration 30
+```
+
+Expected normal progression:
+
+```text
+cpu=40
+cpu=42
+cpu=41
+cpu=43
+```
+
+Then the mock scenario engine should eventually inject spikes such as:
+
+```text
+cpu=95
+```
+
+Expected anomaly output:
+
+```text
+[HIGH]
+prediction=CPU_ANOMALY
+```
+
+Validate:
+
+* z-score anomaly detection triggers
+* anomaly events are not spammy
+* cooldown logic works
+* anomaly detection remains service-isolated
+
+---
+
+## STEP 5 — Validate Memory Anomaly Detection
+
+Expected progression:
+
+```text
+memory=45
+memory=47
+memory=46
+```
+
+Then a sudden spike:
+
+```text
+memory=92
+```
+
+Expected:
+
+``` text
+[HIGH]
+prediction=MEMORY_ANOMALY
+````
+
+---
+
 # PART 4 — FOLDER LOG SOURCE TESTING
 
 Validates realistic external log ingestion.
