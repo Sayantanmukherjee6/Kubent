@@ -1,12 +1,19 @@
-# End-to-End Testing Guide(without llm)
+# End-to-End Testing Guide (without LLM)
 
 ## Overview
 
-This document validates the full deterministic pipeline before integrating the LLM layer.
+This document validates the complete deterministic monitoring pipeline before integrating:
+
+* LLM analysis
+* Gmail alerts
+* Kubernetes
+* Grafana
+* Prometheus
 
 Current validated architecture:
 
 ```text
+Logs:
 FolderLogSource / MockFileLogSource
         ↓
 LogWatcher
@@ -16,11 +23,18 @@ IncidentEvent
 HeuristicPredictor
         ↓
 PredictorEvent
+
+Metrics:
+FolderMetricSource / MockMetricSource
+        ↓
+MetricPredictor
+        ↓
+MetricPredictionEvent
 ```
 
-The `simulate` command is NOT part of the watcher/predictor pipeline.
+The `simulate` command is NOT part of the watcher/predictor architecture.
 
-`simulate` currently does:
+`simulate` currently validates ONLY:
 
 ```text
 mock logs
@@ -30,19 +44,15 @@ LLM provider
 AnalysisResult
 ```
 
-It is standalone and only validates LLM connectivity and structured responses.
+It is standalone and only tests:
+
+* LLM connectivity
+* structured JSON parsing
+* provider abstraction
 
 ---
 
-# PART 1 — MOCK SOURCE TESTING
-
-This validates:
-
-* watcher
-* predictor
-* pipeline wiring
-* deduplication
-* heuristics
+# PART 1 — INITIAL VALIDATION
 
 ---
 
@@ -86,7 +96,8 @@ Expected:
 
 * all tests pass
 * no hangs
-* no flaky behavior
+* deterministic behavior
+* no flaky streaming
 
 ---
 
@@ -98,32 +109,52 @@ Open:
 config/config.yaml
 ```
 
-Set:
+Recommended local setup:
 
 ```yaml
 log_source:
   type: mock
+
+metrics:
+  source:
+    type: mock
+
+  thresholds:
+    cpu_percent: 85
+    memory_percent: 90
+
+  stream_interval_seconds: 5
 ```
 
 ---
 
-## STEP 5 — Run Stream Test
+# PART 2 — MOCK LOG PIPELINE TESTING
+
+Validates:
+
+* watcher
+* heuristic predictor
+* deduplication
+* rolling windows
+* escalation logic
+
+---
+
+## STEP 1 — Stream Mock Logs
 
 ```bash
 python -m src stream-logs --duration 10
 ```
 
-Here duration is in seconds. For running indefinitely, use `--duration 0`.
-
 Expected:
 
-* streaming logs
+* continuous log stream
 * multiple services
 * no crashes
 
 ---
 
-## STEP 6 — Run Watcher Test
+## STEP 2 — Run Watcher
 
 ```bash
 python -m src watch-logs --duration 15
@@ -131,20 +162,20 @@ python -m src watch-logs --duration 15
 
 Expected:
 
-* IncidentEvent outputs
+* IncidentEvent output
 * regex detections
-* severity classifications
-* extracted context
+* severity classification
+* context extraction
 
 Validate:
 
-* dedup works
-* no spam flood
+* no duplicate spam
 * no hangs
+* deduplication works
 
 ---
 
-## STEP 7 — Run Predictor Test
+## STEP 3 — Run Log Predictor
 
 ```bash
 python -m src predict --duration 20
@@ -175,22 +206,95 @@ pattern=Repeated HTTP 5xx error spikes detected
 Validate:
 
 * escalation works
-* repeated incidents trigger prediction
-* output formatting is readable
+* repeated incidents trigger predictions
+* cooldown suppresses spam
 
 ---
 
-# PART 2 — FOLDER SOURCE TESTING (REALISTIC DEMO)
+# PART 3 — MOCK METRIC PIPELINE TESTING
 
-This validates realistic external log ingestion.
+Validates:
+
+* statistical inference
+* anomaly detection
+* CPU forecasting
+* memory forecasting
+* OOM prediction
+
+---
+
+## STEP 1 — Stream Mock Metrics
+
+```bash
+python -m src stream-metrics --duration 15
+```
+
+Expected:
+
+* MetricSample outputs
+* multiple services
+* realistic CPU/memory trends
+* latency changes
+
+Example:
+
+```text
+payment-service cpu=72 memory=68 latency=180
+```
+
+---
+
+## STEP 2 — Run Metric Predictor
+
+```bash
+python -m src predict-metrics --duration 30
+```
+
+Expected pipeline:
+
+```text
+MockMetricSource
+    ↓
+MetricPredictor
+    ↓
+MetricPredictionEvent
+```
+
+Expected prediction examples:
+
+```text
+[HIGH]
+service=payment-service
+prediction=PREDICTED_CPU_BREACH
+```
+
+```text
+[CRITICAL]
+service=auth-service
+prediction=PREDICTED_OOM
+```
+
+---
+
+## STEP 3 — Validate Statistical Inference
+
+Validate:
+
+* moving averages stabilize noise
+* anomaly spikes trigger events
+* CPU threshold forecasting works
+* memory threshold forecasting works
+* cooldown suppresses repeated spam
+
+---
+
+# PART 4 — FOLDER LOG SOURCE TESTING
+
+Validates realistic external log ingestion.
 
 ---
 
 ## STEP 1 — Create External Log Directory
-
-Do NOT use `mocks/`.
-
-Use an external shared-style directory:
 
 ```bash
 mkdir -p ~/k8s-shared-logs
@@ -198,7 +302,7 @@ mkdir -p ~/k8s-shared-logs
 
 ---
 
-## STEP 2 — Create Service Logs
+## STEP 2 — Create Service Log Files
 
 ```bash
 touch ~/k8s-shared-logs/payment-service.log
@@ -208,7 +312,7 @@ touch ~/k8s-shared-logs/gateway.log
 
 ---
 
-## STEP 3 — Switch YAML Config
+## STEP 3 — Configure Folder Source
 
 Update:
 
@@ -222,21 +326,19 @@ Replace `YOUR_USER` with your actual Linux username.
 
 ---
 
-## STEP 4 — Run Stream Validation
+## STEP 4 — Stream Folder Logs
 
 ```bash
 python -m src stream-logs --duration 0
 ```
 
-Leave it running.
+Leave running.
 
 ---
 
 ## STEP 5 — Append Logs Externally
 
-Open another terminal.
-
-Append:
+Open another terminal:
 
 ```bash
 echo "ERROR HTTP 503 upstream service" >> ~/k8s-shared-logs/payment-service.log
@@ -244,7 +346,7 @@ echo "ERROR HTTP 503 upstream service" >> ~/k8s-shared-logs/payment-service.log
 
 Expected:
 
-* streamed line appears immediately
+* line appears immediately
 
 Append more:
 
@@ -256,15 +358,11 @@ echo "ERROR timeout connecting to db" >> ~/k8s-shared-logs/payment-service.log
 
 ## STEP 6 — Run Watcher Validation
 
-Terminal 1:
-
 ```bash
 python -m src watch-logs --duration 0
 ```
 
-Terminal 2:
-
-append additional logs.
+Append additional logs externally.
 
 Expected:
 
@@ -276,13 +374,11 @@ Expected:
 
 ## STEP 7 — Run Full Predictor Validation
 
-Terminal 1:
-
 ```bash
 python -m src predict --duration 0
 ```
 
-Terminal 2:
+Append repeated failures:
 
 ```bash
 echo "ERROR HTTP 503 upstream" >> ~/k8s-shared-logs/payment-service.log
@@ -300,87 +396,208 @@ pattern=Repeated HTTP 5xx error spikes detected
 
 ---
 
-## STEP 8 — Test Critical Escalation
+# PART 5 — FOLDER METRIC SOURCE TESTING
 
-Append:
+Validates realistic external metric ingestion.
+
+---
+
+## STEP 1 — Create Metric Directory
 
 ```bash
-echo "CRITICAL OOMKilled" >> ~/k8s-shared-logs/auth-service.log
-echo "CRITICAL OOMKilled" >> ~/k8s-shared-logs/auth-service.log
+mkdir -p ~/k8s-shared-metrics
+```
+
+---
+
+## STEP 2 — Create CSV Metric Files
+
+```bash
+touch ~/k8s-shared-metrics/payment-service.csv
+touch ~/k8s-shared-metrics/auth-service.csv
+```
+
+---
+
+## STEP 3 — Configure Metric Folder Source
+
+Update:
+
+```yaml
+metrics:
+  source:
+    type: folder
+    folder_path: /home/YOUR_USER/k8s-shared-metrics
+```
+
+---
+
+## STEP 4 — Stream Metrics
+
+```bash
+python -m src stream-metrics --duration 0
+```
+
+---
+
+## STEP 5 — Append Metrics Externally
+
+Append realistic metric data:
+
+```bash
+echo "2026-01-01T10:00:00Z,payment-service,72,68,120,0.01" >> ~/k8s-shared-metrics/payment-service.csv
+```
+
+Append escalating metrics:
+
+```bash
+echo "2026-01-01T10:00:15Z,payment-service,82,78,180,0.04" >> ~/k8s-shared-metrics/payment-service.csv
+
+echo "2026-01-01T10:00:30Z,payment-service,91,88,320,0.12" >> ~/k8s-shared-metrics/payment-service.csv
+```
+
+Expected:
+
+* streamed MetricSample output
+* no crashes
+* proper parsing
+
+---
+
+## STEP 6 — Run Metric Predictor
+
+```bash
+python -m src predict-metrics --duration 0
+```
+
+Expected outputs:
+
+```text
+[HIGH]
+prediction=PREDICTED_CPU_BREACH
+```
+
+```text
+[CRITICAL]
+prediction=PREDICTED_OOM
+```
+
+---
+
+## STEP 7 — Validate Anomaly Detection
+
+Append anomaly spike:
+
+```bash
+echo "2026-01-01T10:01:00Z,payment-service,40,35,1200,0.30" >> ~/k8s-shared-metrics/payment-service.csv
 ```
 
 Expected:
 
 ```text
-[CRITICAL]
-service=auth-service
-pattern=Repeated OOMKilled events detected
-```
-
----
-
-## STEP 9 — Multi-Service Validation
-
-Append simultaneously:
-
-```bash
-echo "ERROR timeout connecting to db" >> ~/k8s-shared-logs/payment-service.log
-
-echo "ERROR connection refused" >> ~/k8s-shared-logs/gateway.log
+LATENCY_ANOMALY
 ```
 
 Validate:
 
-* services remain isolated
-* rolling windows are per-service
-* no cross-contamination
+* z-score anomaly detection works
+* predictor remains stable
+* no event spam
 
 ---
 
-## STEP 10 — Long Stability Test
+# PART 6 — COMBINED PIPELINE VALIDATION
 
-Run:
+This simulates realistic production-like behavior.
+
+Run simultaneously:
+
+Terminal 1:
+
+```bash
+python -m src predict --duration 0
+```
+
+Terminal 2:
+
+```bash
+python -m src predict-metrics --duration 0
+```
+
+Terminal 3:
+
+append logs + metrics continuously.
+
+Validate:
+
+* independent pipelines
+* service isolation
+* no cross contamination
+* stable long-running behavior
+
+---
+
+# PART 7 — LONG STABILITY TEST
+
+Run for extended duration:
 
 ```bash
 python -m src predict --duration 120
 ```
 
-Append logs continuously.
+and:
 
-Watch for:
+```bash
+python -m src predict-metrics --duration 120
+```
+
+Validate:
 
 * memory stability
-* no duplicate floods
+* bounded rolling windows
 * no CPU spikes
-* clean shutdown behavior
+* no duplicate floods
+* graceful shutdown
 
 ---
 
 # Success Criteria
 
-If all tests pass successfully:
+If all tests pass:
 
 ```text
-external log append
+external append
     ↓
-watcher detects
+source ingestion
     ↓
-predictor escalates
+watcher/predictor detection
+    ↓
+prediction generation
 ```
 
-then the deterministic monitoring pipeline is complete.
+then the deterministic monitoring system is complete.
 
 At this point:
 
 * Kubernetes integration becomes optional
 * Grafana integration becomes optional
+* Prometheus integration becomes optional
 
 because the architecture already simulates:
 
 * shared cluster log volumes
-* pod log ingestion
-* centralized monitoring
+* shared metric volumes
+* centralized observability
+* predictive monitoring
 
 very realistically.
 
+Next phase:
 
+```text
+PredictorEvent / MetricPredictionEvent
+                ↓
+              LLM
+                ↓
+          Gmail Alert
+```
