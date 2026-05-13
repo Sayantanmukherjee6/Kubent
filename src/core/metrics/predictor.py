@@ -81,10 +81,21 @@ class RollingWindow:
         return statistics.stdev(values)
 
     def z_score(self, value: float) -> float:
-        """Compute the z-score of *value* relative to the window."""
+        """Compute the z-score of *value* relative to the window.
+
+        When the window has zero std-dev (all values identical), any value
+        that differs from the median is treated as an extreme outlier with
+        a large z-score so it cannot be silently ignored.
+        """
         sd = self.std_dev(list(self.values))
         if sd == 0:
-            return 0.0
+            # All baseline values are identical — any deviation is anomalous.
+            # Return a large z-score proportional to the deviation magnitude.
+            median_val = self.median(list(self.values))
+            if value == median_val:
+                return 0.0
+            # Use a scaled score: deviation / 1.0 gives meaningful z-like values
+            return (value - median_val) / 1.0
         return (value - self.median(list(self.values))) / sd
 
     @staticmethod
@@ -212,6 +223,10 @@ class MetricPredictor:
 
         Async-safe via asyncio.Lock.  Returns zero or more
         MetricPredictionEvent instances.
+
+        Anomaly detection (z-score) is computed **before** adding the current
+        value to the rolling window so that the outlier does not inflate its
+        own standard deviation and mask itself.
         """
         async with self._lock:
             svc = sample.service_name
@@ -223,6 +238,17 @@ class MetricPredictor:
                 }
 
             windows = self._windows[svc]
+
+            # Compute z-scores BEFORE adding the new value to the window,
+            # so the outlier does not inflate its own std-dev.
+            pre_z_scores: dict[str, float] = {}
+            for metric_key in ("cpu", "memory", "latency"):
+                win = windows[metric_key]
+                if win.size() >= 3:
+                    attr = f"{metric_key}_usage" if metric_key != "latency" else "latency_ms"
+                    pre_z_scores[metric_key] = win.z_score(getattr(sample, attr))
+
+            # Now add the new value to all windows
             windows["cpu"].add(sample.cpu_usage)
             windows["memory"].add(sample.memory_usage)
             windows["latency"].add(sample.latency_ms)
@@ -230,8 +256,8 @@ class MetricPredictor:
             events: list[MetricPredictionEvent] = []
             now = sample.timestamp or datetime.now(timezone.utc)
 
-            # 1. Anomaly detection via z-score
-            events.extend(self._check_anomalies(svc, sample, now, windows))
+            # 1. Anomaly detection via pre-computed z-scores
+            events.extend(self._check_anomalies(svc, sample, now, windows, pre_z_scores))
 
             # 2. Threshold forecasting via linear trend
             events.extend(self._check_threshold_forecasts(svc, sample, now, windows))
@@ -246,7 +272,6 @@ class MetricPredictor:
             events = self._apply_cooldown(svc, events, now)
 
             return events
-
     # ------------------------------------------------------------------
     # Internal: cooldown
     # ------------------------------------------------------------------
@@ -301,8 +326,14 @@ class MetricPredictor:
         sample: MetricSample,
         now: datetime,
         windows: dict[str, RollingWindow],
+        pre_z_scores: dict[str, float] | None = None,
     ) -> list[MetricPredictionEvent]:
-        """Check z-score anomaly detection for all three metrics."""
+        """Check z-score anomaly detection for all three metrics.
+
+        If *pre_z_scores* is provided (computed before adding the current value
+        to the window), those values are used instead of recomputing so that the
+        outlier does not inflate its own standard deviation.
+        """
         events: list[MetricPredictionEvent] = []
 
         checks = [
@@ -315,7 +346,8 @@ class MetricPredictor:
             win = windows[metric_key]
             if win.size() < 3:
                 continue  # Need at least 3 samples for meaningful z-score
-            z = win.z_score(value)
+            # Use pre-computed z-score (computed before adding current value)
+            z = pre_z_scores.get(metric_key) if pre_z_scores else win.z_score(value)
             if abs(z) > self._anomaly_z_threshold:
                 severity = MetricSeverity.HIGH if abs(z) > 3.5 else MetricSeverity.MEDIUM
                 events.append(
