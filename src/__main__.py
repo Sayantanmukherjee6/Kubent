@@ -8,6 +8,7 @@ import click
 
 from src.config.settings import Settings, LlmProviderType
 from src.core.log_sources.factory import create_log_source
+from src.core.metrics.scenario_generator import generate_demo_metrics, list_available_scenarios, get_scenario_description
 from src.core.predictor.models import RiskLevel
 from mocks.generators.log_generator import generate_mock_logs_text
 
@@ -455,6 +456,66 @@ def predict_metrics(duration: float, source: str | None, metric_dir: str | None)
             click.echo(click.style("=" * 70, fg="bright_black"))
 
     asyncio.run(_run())
+
+
+# generate-metrics — write realistic demo metric CSV files
+# ---------------------------------------------------------------------------
+
+@cli.command("generate-metrics")
+@click.option("--scenarios", default=None, help="Comma-separated scenario names (e.g. steady_cpu_growth,memory_leak).")
+@click.option("--services", "-s", default=None, help="Comma-separated service names.")
+@click.option("--output", "-o", default="./demo_metrics", type=click.Path(), help="Output directory for CSV files.")
+@click.option("--duration", "-d", default=60, type=int, help="Number of metric steps per service (each step = 5s).")
+@click.option("--list", "-l", is_flag=True, help="List available scenarios and exit.")
+def generate_metrics(scenarios: str | None, services: str | None, output: str, duration: int, list: bool) -> None:
+    """Generate realistic demo metric CSV files for predictive demonstrations.
+
+    Writes deterministic, scenario-driven metric streams into the output directory.
+    Each service gets its own CSV file with correlated CPU, memory, latency, and error_rate.
+    """
+    if list:
+        click.echo(click.style("Available scenarios:", fg="cyan", bold=True))
+        for name in list_available_scenarios():
+            desc = get_scenario_description(name)
+            click.echo(f"  {click.style(name, fg='yellow')} — {desc}")
+        return
+
+    svc_list = None
+    if services is not None:
+        svc_list = [s.strip() for s in services.split(",")]
+
+    scen_list = None
+    if scenarios is not None:
+        scen_list = [s.strip() for s in scenarios.split(",")]
+        # Validate scenarios
+        for s in scen_list:
+            if get_scenario_description(s) is None:
+                click.echo(click.style(f"ERROR: Unknown scenario {s!r}", fg="red"), err=True)
+                available = ", ".join(list_available_scenarios())
+                click.echo(f"Available scenarios: {available}")
+                sys.exit(1)
+
+    click.echo(f"Generating demo metrics -> {output}/")
+    if scen_list:
+        click.echo(f"  Scenarios: {', '.join(scen_list)}")
+    else:
+        click.echo("  Scenarios: per-service defaults (gateway=cpu_growth, payment=latency_spike, auth=memory_leak)")
+    if svc_list:
+        click.echo(f"  Services: {', '.join(svc_list)}")
+    click.echo(f"  Steps: {duration} ({duration * 5}s of simulated time)")
+
+    results = generate_demo_metrics(
+        output_dir=output,
+        scenarios=scen_list,
+        services=svc_list,
+        total_steps=duration,
+    )
+
+    for svc, path in results.items():
+        click.echo(click.style(f"  ✓ {svc} -> {path}", fg="green"))
+
+    total = sum(1 for p in results.values() if p.exists())
+    click.echo(click.style(f"\nDone. Generated metrics for {total} service(s).", fg="green"))
 
 
 # simulate — generate mock logs and send to LLM for analysis (existing)

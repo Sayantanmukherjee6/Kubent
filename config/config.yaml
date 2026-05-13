@@ -43,6 +43,7 @@ metrics:
     cpu_percent: 85                 # alert when CPU exceeds this %
     memory_percent: 90              # alert when memory exceeds this %
   stream_interval_seconds: 5        # interval between metric samples
+  scenarios: []                     # scenario names (empty = legacy mode)
 llm:
   provider: llama_cpp               # "llama_cpp" or "openai"
 

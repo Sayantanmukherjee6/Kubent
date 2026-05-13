@@ -43,6 +43,16 @@ from src.core.metrics.mock_metric_source import MockMetricSource
 from src.core.metrics.models import MetricSample
 from src.core.metrics.predictor import MetricPredictor, RollingWindow
 from src.core.metrics.rules import PredictionRule, PredictionRules
+from src.core.metrics.scenarios import (
+    ScenarioEngine,
+    SteadyCpuGrowth,
+    MemoryLeak,
+    LatencySpike,
+    CascadingFailure,
+    RecoveryPhase,
+    ALL_SCENARIOS,
+)
+from src.core.metrics.scenario_generator import generate_demo_metrics, generate_all_default_scenarios
 
 __all__ = [
     "BaseMetricSource",
@@ -57,4 +67,13 @@ __all__ = [
     "MetricSeverity",
     "PredictionRule",
     "PredictionRules",
+    "ScenarioEngine",
+    "SteadyCpuGrowth",
+    "MemoryLeak",
+    "LatencySpike",
+    "CascadingFailure",
+    "RecoveryPhase",
+    "ALL_SCENARIOS",
+    "generate_demo_metrics",
+    "generate_all_default_scenarios",
 ]

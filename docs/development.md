@@ -181,8 +181,10 @@ project/
 │   │       ├── __init__.py
 │   │       ├── base.py           # BaseMetricSource ABC + MetricSample dataclass
 │   │       ├── factory.py        # create_metric_source(settings) factory
-│   │       ├── mock_metric_source.py  # Mock metric source with trend simulation
-│   │       └── folder_metric_source.py  # Tails *.csv files in a directory
+│   │       ├── mock_metric_source.py     # Mock metric source with trend simulation
+│   │       ├── folder_metric_source.py   # Tails *.csv files in a directory
+│   │       ├── scenarios.py              # Scenario-based metric simulation
+│   │       └── scenario_generator.py     # Demo CSV file generator
 │   ├── providers/
 │   │   ├── __init__.py
 │   │   ├── base.py               # Abstract base class + AnalysisResult
@@ -207,7 +209,8 @@ project/
 │   │   │   ├── __init__.py
 │   │   │   ├── test_metric_models.py
 │   │   │   ├── test_mock_metric_source.py
-│   │   │   └── test_folder_metric_source.py
+│   │   │   ├── test_folder_metric_source.py
+│   │   │   └── test_scenarios.py
 │   │   ├── providers/
 │   │   │   ├── __init__.py
 │   │   │   ├── test_base.py
@@ -248,3 +251,61 @@ logging.basicConfig(level=logging.WARNING)
 ```
 
 No external observability frameworks are used — only the stdlib `logging` module.
+
+## Scenario-Based Metric Simulation
+
+The metrics subsystem supports deterministic, scenario-driven metric generation via
+`src.core.metrics.scenarios`. Scenarios produce correlated CPU, memory, latency, and
+error_rate values that naturally trigger predictor alerts.
+
+**Scenario engine:** `ScenarioEngine` manages per-service state across one or more
+active scenarios. Each scenario implements an `advance(state, step)` method that
+modifies the service's metrics deterministically.
+
+**Configuring scenarios:**
+
+```yaml
+# config/config.yaml
+metrics:
+  source:
+    type: mock
+  scenarios:
+    - steady_cpu_growth
+    - memory_leak
+```
+
+Or via environment variable: `METRICS_SCENARIOS=steady_cpu_growth,memory_leak`
+
+**Generating demo CSV files:**
+
+```bash
+# Generate with per-service defaults
+python -m src generate-metrics --output ./demo_metrics --duration 60
+
+# Specify scenarios and services explicitly
+python -m src generate-metrics \
+    --scenarios cascading_failure,recovery_phase \
+    --services gateway auth-service payment-service \
+    --duration 40
+```
+
+**Testing scenarios:**
+
+```bash
+# Run scenario unit tests
+pytest tests/unit/metrics/test_scenarios.py -v
+
+# Run all metric tests including predictor integration
+pytest tests/unit/metrics/ -v
+```
+
+**Programmatic usage:**
+
+```python
+from src.core.metrics.scenarios import ScenarioEngine
+
+engine = ScenarioEngine(scenarios=["memory_leak"], services=["auth-service"])
+for step in range(60):
+    state = engine.advance("auth-service")
+    print(f"Step {step}: mem={state.memory:.1f} lat={state.latency:.1f}")
+```

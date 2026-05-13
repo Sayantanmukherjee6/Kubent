@@ -98,6 +98,7 @@ class MetricsConfig:
     thresholds: MetricsThresholds = field(default_factory=MetricsThresholds)
     stream_interval_seconds: float = 5.0
     predictor_window_size: int = 100
+    scenarios: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -265,12 +266,16 @@ class Settings:
         interval = float(self._resolve("metrics.stream_interval_seconds", "METRICS_STREAM_INTERVAL", 5.0))
 
         pred_window = int(self._resolve('metrics.predictor_window_size', 'METRICS_PREDICTOR_WINDOW_SIZE', 100))
+        scenarios = self._resolve('metrics.scenarios', 'METRICS_SCENARIOS', [])
+        if isinstance(scenarios, str):
+            scenarios = [s.strip() for s in scenarios.split(',') if s.strip()]
 
         return MetricsConfig(
             source=MetricSourceConfig(type=source_type, folder_path=folder_path),
             thresholds=MetricsThresholds(cpu_percent=cpu_thresh, memory_percent=mem_thresh),
             stream_interval_seconds=interval,
             predictor_window_size=pred_window,
+            scenarios=list(scenarios),
         )
 
     def _build_llm(self) -> LlmConfig:

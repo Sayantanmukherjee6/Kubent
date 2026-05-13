@@ -303,6 +303,67 @@ python -m src generate-logs --count 200 -o /tmp/demo-logs/app.log
 python -m src predict --source folder --log-dir /tmp/demo-logs --duration 5
 ```
 
+## Scenario-Based Metric Generation
+
+The agent includes deterministic, scenario-driven metric simulation that produces
+realistic, correlated metrics for demo and testing purposes. Each scenario models a
+specific failure pattern with natural metric correlations.
+
+**Available scenarios:**
+
+| Scenario | Behavior | Triggers |
+|---|---|---|
+| `steady_cpu_growth` | CPU climbs from 40→93% over 60 steps; latency correlates upward | CPU breach prediction |
+| `memory_leak` | Memory leaks from 55→93%; error_rate spikes near OOM threshold | OOM risk, memory breach |
+| `latency_spike` | Periodic latency spikes (every ~20 steps) with brief recovery | Latency anomaly detection |
+| `cascading_failure` | Multi-phase: normal → degrade → cascade → recover | Multiple prediction types |
+| `recovery_phase` | Metrics converge from degraded state back to healthy baselines | Predictor stops firing |
+
+**Service-specific defaults:** When no scenarios are specified, each service gets a
+default scenario: `gateway` → CPU growth, `payment-service` → latency spikes,
+`auth-service` → memory leak.
+
+**Generate demo CSV files:**
+
+```bash
+# List available scenarios
+python -m src generate-metrics --list
+
+# Generate with per-service defaults (60 steps = 5 minutes of simulated time)
+python -m src generate-metrics --output ./demo_metrics
+
+# Specify specific scenarios and services
+python -m src generate-metrics \
+    --scenarios steady_cpu_growth,memory_leak \
+    --services gateway auth-service \
+    --duration 60
+
+# Output directory structure
+demo_metrics/
+├── gateway.csv              # CPU growth scenario
+├── auth-service.csv         # Memory leak scenario
+└── payment-service.csv      # Latency spike scenario
+```
+
+**Use scenarios with MockMetricSource:** Set `metrics.scenarios` in `config.yaml`:
+
+```yaml
+metrics:
+  source:
+    type: mock
+  scenarios:
+    - steady_cpu_growth
+    - memory_leak
+```
+
+Or via environment variable: `METRICS_SCENARIOS=steady_cpu_growth,memory_leak`
+
+Then stream with scenario-driven metrics:
+
+```bash
+python -m src predict-metrics --duration 60
+```
+
 ## Design Principles
 
 - **Local-first**: Runs entirely on your machine with a local llama.cpp server.
@@ -324,6 +385,8 @@ python -m src predict --duration 15
 python -m src simulate (depreciated, will be removed soon)
 python -m src stream-metrics --duration 15   # Stream mock metrics
 python -m src predict-metrics --duration 15   # Stream metrics + statistical predictions
+python -m src generate-metrics --list       # List available scenarios
+python -m src generate-metrics              # Generate demo CSV files
 pytest -v
 echo 'LLM_PROVIDER=openai' >> .env   # Switch to OpenAI
 ```
