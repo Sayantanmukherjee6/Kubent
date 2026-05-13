@@ -366,6 +366,97 @@ def predict(duration, min_severity, dedup_ttl, dedup_threshold, source, log_dir)
 
     asyncio.run(_run())
 
+
+# predict-metrics — stream metrics and run statistical predictor
+# ---------------------------------------------------------------------------
+
+@cli.command("predict-metrics")
+@click.option("--duration", "-d", default=15, type=float, help="Seconds to stream (0 = infinite).")
+@click.option("--source", "-S", default=None, type=click.Choice(["mock", "folder"], case_sensitive=False),
+              help="Override metric source type (mock or folder).")
+@click.option("--metric-dir", default=None, type=click.Path(),
+              help="Override metric directory path (used by folder source).")
+def predict_metrics(duration: float, source: str | None, metric_dir: str | None) -> None:
+    """Stream metrics and run the statistical predictor.
+
+    Streams MetricSample objects from the configured metric source,
+    feeds them through MetricPredictor, and prints prediction events
+    to the console in real-time.
+    """
+    from src.core.metrics import MetricPredictor, MetricPredictionType, MetricSeverity
+    from src.core.metrics.factory import create_metric_source
+
+    # Build settings with optional CLI overrides
+    overrides = {}
+    if source is not None:
+        overrides["metrics_source_type"] = source
+    if metric_dir is not None:
+        overrides["metrics_folder_path"] = metric_dir
+    settings = Settings(**overrides)
+
+    metric_source = create_metric_source(settings)
+    predictor = MetricPredictor(
+        window_size=settings.metrics.predictor_window_size,
+        cpu_threshold=settings.metrics.thresholds.cpu_percent,
+        memory_threshold=settings.metrics.thresholds.memory_percent,
+    )
+
+    severity_colors = {
+        MetricSeverity.LOW: "yellow",
+        MetricSeverity.MEDIUM: "white",
+        MetricSeverity.HIGH: "magenta",
+        MetricSeverity.CRITICAL: "red",
+    }
+
+    async def _run() -> None:
+        event_count = 0
+        sample_count = 0
+        start_time = asyncio.get_event_loop().time()
+
+        click.echo(click.style(f"Streaming from {metric_source.name} (Ctrl+C to stop)...", fg="cyan"))
+        click.echo(click.style(
+            f"CPU threshold: {settings.metrics.thresholds.cpu_percent:.0f}% | "
+            f"Memory threshold: {settings.metrics.thresholds.memory_percent:.0f}% | "
+            f"Window: {settings.metrics.predictor_window_size}",
+            fg="bright_black"))
+        click.echo(click.style("-" * 70, fg="bright_black"))
+
+        try:
+            await metric_source.start()
+            async for sample in metric_source.stream():
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if duration > 0 and elapsed > duration:
+                    break
+
+                sample_count += 1
+                events = await predictor.process(sample)
+
+                for event in events:
+                    event_count += 1
+                    color = severity_colors.get(event.severity, "white")
+                    click.echo(click.style(f"[{event.prediction_type.value}]", fg=color, bold=True))
+                    click.echo(f"  Service     : {event.service_name}")
+                    click.echo(click.style(f"  Severity    : {event.severity.value}", fg=color))
+                    click.echo(f"  Message     : {event.message}")
+                    click.echo(f"  Current     : {event.current_value:.1f}")
+                    click.echo(f"  Predicted   : {event.predicted_value:.1f}")
+                    click.echo(f"  Threshold   : {event.threshold:.1f}")
+
+        except KeyboardInterrupt:
+            pass
+        finally:
+            await metric_source.stop()
+            elapsed = asyncio.get_event_loop().time() - start_time
+            click.echo(click.style("=" * 70, fg="bright_black"))
+            click.echo(click.style(
+                f"Stopped after {elapsed:.1f}s. Processed {sample_count} samples, "
+                f"emitted {event_count} prediction event(s).",
+                fg="green"))
+            click.echo(click.style("=" * 70, fg="bright_black"))
+
+    asyncio.run(_run())
+
+
 # simulate — generate mock logs and send to LLM for analysis (existing)
 # ---------------------------------------------------------------------------
 

@@ -8,6 +8,12 @@ Public API
 - ``MockMetricSource`` — generates and streams synthetic K8s metrics
 - ``FolderMetricSource`` — tails ``*.csv`` files in a shared directory
 - ``create_metric_source`` — factory that returns the configured source type
+- ``MetricPredictor`` — statistical metric predictor (lightweight forecasting)
+- ``RollingWindow`` — bounded deque-based rolling window with stats methods
+- ``MetricPredictionEvent`` — prediction event dataclass
+- ``MetricPredictionType`` — enum of prediction types
+- ``MetricSeverity`` — severity levels for predictions
+- ``PredictionRule`` — configurable prediction rule
 
 Example
 -------
@@ -26,10 +32,17 @@ Example
 """
 
 from src.core.metrics.base import BaseMetricSource
+from src.core.metrics.events import (
+    MetricPredictionEvent,
+    MetricPredictionType,
+    MetricSeverity,
+)
 from src.core.metrics.folder_metric_source import FolderMetricSource
 from src.core.metrics.factory import create_metric_source
 from src.core.metrics.mock_metric_source import MockMetricSource
 from src.core.metrics.models import MetricSample
+from src.core.metrics.predictor import MetricPredictor, RollingWindow
+from src.core.metrics.rules import PredictionRule, PredictionRules
 
 __all__ = [
     "BaseMetricSource",
@@ -37,4 +50,11 @@ __all__ = [
     "MockMetricSource",
     "FolderMetricSource",
     "create_metric_source",
+    "MetricPredictor",
+    "RollingWindow",
+    "MetricPredictionEvent",
+    "MetricPredictionType",
+    "MetricSeverity",
+    "PredictionRule",
+    "PredictionRules",
 ]

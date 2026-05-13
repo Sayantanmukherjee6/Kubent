@@ -109,6 +109,21 @@ python -m src predict --source folder --log-dir /var/log/apps
 - **`FolderMetricSource`** (`src/core/metrics/folder_metric_source.py`): Polling-based watcher that tails `*.csv` metric files, parses CSV lines, and tracks per-file offsets.
 
 CSV format: `timestamp,service,cpu,memory,latency,error_rate`
+
+### Statistical Metric Predictor (Lightweight Forecasting)
+
+- **`RollingWindow`** (`src/core/metrics/predictor.py`): Bounded deque-based rolling window with statistical methods — moving average, median, standard deviation, z-score computation, and linear trend forecasting.
+- **`MetricPredictor`** (`src/core/metrics/predictor.py`): Processes `MetricSample` objects through four analysis stages:
+  1. Z-score anomaly detection (|z| > 2.5) for CPU, memory, and latency
+  2. Linear trend forecasting against configured thresholds for breach prediction
+  3. OOM risk heuristic (rising memory + rising latency near threshold)
+  4. Custom `PredictionRule` evaluation
+- **`MetricPredictionEvent`** (`src/core/metrics/events.py`): Frozen dataclass holding prediction details including type, severity, current/predicted values, and threshold.
+- **`PredictionRule`** (`src/core/metrics/rules.py`): Configurable rule with threshold-based or custom condition evaluation.
+
+This subsystem uses only stdlib modules (statistics, math, asyncio, collections.deque, dataclasses) — no ML frameworks, no pandas/numpy.
+
+See [metrics.md](metrics.md) for the metric source architecture.
 ## Design Principles
 
 - **Local-first**: Runs entirely on your machine with a local llama.cpp server.

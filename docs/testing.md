@@ -28,3 +28,4 @@ coverage report
 - **Watcher (Integration)**: Multi-service incident detection, full watcher pipeline with mock log source
 - **Predictor (Unit)**: Heuristic rule evaluation, rolling window logic, threshold triggering, service isolation, reset behavior
 - **Predictor (Integration)**: End-to-end predict flow (watcher → predictor → output), multi-service prediction scenarios
+- **Metric Predictor (Unit)**: Rolling window statistics (moving average, median, std_dev), z-score anomaly detection, linear trend forecasting, CPU/memory threshold breach prediction, OOM risk heuristic, bounded memory enforcement, multi-service isolation, prediction event generation, PredictionRule evaluation

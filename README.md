@@ -32,7 +32,7 @@ python -m src simulate
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    CLI (click)                       │
-│  generate-logs | stream-logs | watch-logs | predict │ simulate │
+│  generate-logs | stream-logs | watch-logs | predict | predict-metrics │ simulate │
 └──────┬──────────────────┬────────────────┬───────────┘
        │                  │                │
        ▼                  ▼                ▼
@@ -89,6 +89,17 @@ python -m src simulate
 │    → FolderMetricSource              │
 │      → CSV tailing + parsing         │
 │      → Offset tracking               │
+└──────────────────────────────────────┘
+┌──────────────────────────────────────┐
+│   Statistical Metric Predictor       │
+│                                      │
+│  MetricPredictor                     │
+│    → RollingWindow (per-service)     │
+│    → Z-score anomaly detection       │
+│    → Linear trend forecasting        │
+│    → OOM risk heuristic              │
+│    → PredictionRule evaluation       │
+│      → MetricPredictionEvent         │
 └──────────────────────────────────────┘
 ```
 
@@ -168,6 +179,79 @@ metrics:
 ```
 
 Or via environment variable: `METRICS_SOURCE_TYPE=folder`
+
+## Statistical Metric Predictor (Lightweight Forecasting)
+
+The agent includes a **lightweight statistical forecasting** engine that predicts
+resource threshold breaches and anomalies using basic statistical inference — no
+machine learning, no external libraries.
+
+```
+┌──────────────────────────────────────┐
+│  MetricPredictor                     │
+│                                      │
+│  process(MetricSample)               │
+│    → RollingWindow (per-service)     │
+│      → Z-score anomaly detection     │
+│      → Linear trend forecasting      │
+│      → OOM risk heuristic            │
+│      → PredictionRule evaluation     │
+│    → list[MetricPredictionEvent]     │
+└──────────────────────────────────────┘
+```
+
+**Supported prediction types:**
+
+| Type | Description |
+|---|---|
+| `PREDICTED_CPU_BREACH` | CPU usage predicted to cross threshold via linear trend |
+| `PREDICTED_MEMORY_BREACH` | Memory usage predicted to cross threshold via linear trend |
+| `PREDICTED_OOM` | Out-of-memory risk (rising memory + rising latency near threshold) |
+| `CPU_ANOMALY` | CPU value deviates significantly from baseline (z-score > 2.5) |
+| `MEMORY_ANOMALY` | Memory value deviates significantly from baseline (z-score > 2.5) |
+| `LATENCY_ANOMALY` | Latency value deviates significantly from baseline (z-score > 2.5) |
+
+**Statistical methods used:**
+
+- **Moving Average** — rolling average over recent samples for smoothing
+- **Median** — stable baseline resistant to outliers
+- **Standard Deviation** — spread analysis for anomaly detection
+- **Z-Score Anomaly Detection** — flags values where |z| > 2.5
+- **Linear Trend Forecasting** — simple slope-based prediction: `future = current + slope * steps`
+
+**Threshold forecasting:** Reads thresholds from `config.yaml` (`metrics.thresholds.cpu_percent`, `metrics.thresholds.memory_percent`). If the linear trend predicts crossing a threshold within 10 samples, a breach prediction event is emitted.
+
+**OOM risk heuristic (simple):**
+- IF memory is rising steadily (positive slope)
+- AND memory is near threshold (> 80% of threshold)
+- AND latency is increasing (positive slope)
+- THEN emit `PREDICTED_OOM` event
+
+**CLI usage:**
+
+```bash
+# Stream metrics with predictor (15s default)
+python -m src predict-metrics
+
+# Custom duration and source override
+python -m src predict-metrics --duration 30 --source folder --metric-dir /tmp/metrics
+```
+
+**Example output:**
+
+```
+Streaming from mock-metrics (Ctrl+C to stop)...
+CPU threshold: 85% | Memory threshold: 90% | Window: 100
+----------------------------------------------------------------------
+[PREDICTED_CPU_BREACH]
+  Service     : payment-service
+  Severity    : medium
+  Message     : CPU predicted to breach 85% threshold (forecast: 86.3%)
+  Current     : 84.0
+  Predicted   : 86.3
+  Threshold   : 85.0
+```
+
 ## Predict Workflow
 
 The `predict` command wires the full watcher + predictor pipeline together for real-time
@@ -239,6 +323,7 @@ python -m src watch-logs --duration 15
 python -m src predict --duration 15
 python -m src simulate (depreciated, will be removed soon)
 python -m src stream-metrics --duration 15   # Stream mock metrics
+python -m src predict-metrics --duration 15   # Stream metrics + statistical predictions
 pytest -v
 echo 'LLM_PROVIDER=openai' >> .env   # Switch to OpenAI
 ```
