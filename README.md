@@ -18,6 +18,7 @@ python -m src simulate
 | [Architecture](docs/architecture.md) | System overview, key abstractions, design principles |
 | [Providers](docs/providers.md) | LLM backends (llama.cpp, OpenAI), factory, request flow |
 | [Log Sources](docs/log_sources.md) | BaseLogSource abstraction, mock file source, folder source, log generator |
+| [Metrics](docs/metrics.md) | Metric subsystem, MockMetricSource, FolderMetricSource, CSV ingestion |
 | [Watcher](docs/watcher.md) | Log monitoring, regex detection (26 rules), context, dedup |
 | [Predictor](docs/predictor.md) | Heuristic prediction engine (4 rules), rolling windows |
 | [CLI](docs/cli.md) | All commands: generate-logs, stream-logs, watch-logs, predict, simulate |
@@ -79,6 +80,16 @@ python -m src simulate
 │    → Heuristic rules                 │             │
 │      → PredictorEvent                │             │
 └──────────────────────────────────────┘             │
+┌──────────────────────────────────────┐
+│         Metrics Subsystem            │
+│                                      │
+│  BaseMetricSource (from factory)     │
+│    → MockMetricSource                │
+│      → Trend-based simulation        │
+│    → FolderMetricSource              │
+│      → CSV tailing + parsing         │
+│      → Offset tracking               │
+└──────────────────────────────────────┘
 ```
 
 ## Log Sources
@@ -105,6 +116,58 @@ Or via environment variable: `LOG_SOURCE_TYPE=folder`
 - Single-consumer: only one `stream()` call may be active at a time (raises `RuntimeError` otherwise)
 - Filesystem errors (permission denied, missing files) are logged at WARNING level
 
+## Metrics Subsystem
+
+The agent includes a lightweight metric subsystem that mirrors the log source
+architecture. It supports mock metric streaming and folder-based CSV ingestion,
+providing a foundation for future predictive analysis.
+
+```
+┌──────────────────────────────────────┐
+│  Metric Source Factory               │
+│                                      │
+│  create_metric_source(settings)      │
+│    → mock or                         │
+│      folder                          │
+└──────┬───────────────────────────────┘
+       │
+   ┌────┴────┐
+   │         │
+   ▼         ▼
+┌──────────┐ ┌────────────────┐
+│MockMetric│ │FolderMetric    │
+│Source    │ │Source          │
+│          │ │               ││
+│- generates│- tails *.csv   ││
+│  metrics │- parses CSV     ││
+│- trends   │- offset tracking││
+└──────────┘ └────────────────┘
+```
+
+**Metric source types:**
+
+| Type | Description | Use Case |
+|---|---|---|
+| `mock` (default) | Generates synthetic K8s-style metrics with natural trends | Development, testing |
+| `folder` | Tails `*.csv` metric files in a shared directory | External metric ingestion |
+
+**CSV format:**
+
+```
+timestamp,service,cpu,memory,latency,error_rate
+2026-01-01T10:00:00Z,payment-service,72,68,120,0.01
+```
+
+**Switching sources:**
+```yaml
+# config/config.yaml
+metrics:
+  source:
+    type: folder              # "mock" or "folder"
+    folder_path: ./demo_metrics
+```
+
+Or via environment variable: `METRICS_SOURCE_TYPE=folder`
 ## Predict Workflow
 
 The `predict` command wires the full watcher + predictor pipeline together for real-time
@@ -162,6 +225,7 @@ python -m src predict --source folder --log-dir /tmp/demo-logs --duration 5
 - **Minimal dependencies**: No LangChain, CrewAI, or AutoGen — just `asyncio`, `httpx`, and `pydantic`.
 - **Log source abstraction**: Swapping log sources requires implementing one interface (`BaseLogSource`).
 - **Provider abstraction**: Swapping the LLM backend requires changing one environment variable.
+- **Metric source abstraction**: Swapping metric sources requires implementing one interface (`BaseMetricSource`).
 - **Mock-first development**: Full mock log generation with streaming simulation for testing without external infrastructure.
 
 ## Quick Reference
@@ -174,6 +238,7 @@ python -m src stream-logs --duration 15
 python -m src watch-logs --duration 15
 python -m src predict --duration 15
 python -m src simulate (depreciated, will be removed soon)
+python -m src stream-metrics --duration 15   # Stream mock metrics
 pytest -v
 echo 'LLM_PROVIDER=openai' >> .env   # Switch to OpenAI
 ```

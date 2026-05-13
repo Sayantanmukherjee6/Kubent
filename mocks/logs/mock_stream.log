@@ -1,551 +1,534 @@
-2026-05-12T15:42:51.057Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:42:52.739Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:42:51.972Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:42:58.051Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:04:56.976Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:04:58.389Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:04:59.212Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:42:56.416Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:42:58.411Z [WARN    ] pod/order-processor-p9o8n7m6l5: Circuit breaker half-open for inventory-service (1 success, 9 failures)
-2026-05-12T15:43:05.972Z [ERROR   ] pod/notification-worker-a1b2c3d4e5: Redis connection lost to cache-redis-0: READERR OOM command not allowed
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:05.193Z [CRITICAL] pod/cache-redis-redis-1: Data corruption detected in order table: 3 rows with invalid checksums
+2026-05-12T17:04:59.249Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:12.446Z [INFO    ] pod/auth-service-7a2d9e5f1c: Grpc call to inventory-service completed in 23ms
-2026-05-12T15:43:05.348Z [WARN    ] pod/payment-service-7d4f2a8e3b: Stale connection detected on db-replica-2 — reconnecting
-2026-05-12T15:43:13.214Z [ERROR   ] pod/gateway-9d3b7f2e5a: Connection refused to database host db-primary:5432 — ECONNREFUSED
+2026-05-12T17:05:02.116Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:00.288Z [WARN    ] pod/order-processor-p9o8n7m6l5: Circuit breaker half-open for inventory-service (1 success, 9 failures)
+2026-05-12T17:05:12.915Z [ERROR   ] pod/notification-worker-a1b2c3d4e5: Redis connection lost to cache-redis-0: READERR OOM command not allowed
 Traceback (most recent call last):
   File "/app/src/workers/processor.py", line 56, in process
     result = await self._handler(event)
   File "/app/src/handlers/order.py", line 112, in handle_order
     raise ValidationError(f"Invalid order ID: {order_id}")
 src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:00.310Z [CRITICAL] pod/inventory-service-5d9b3a7c1e: Disk space critical: /var/log is 98% full — emergency cleanup triggered
+2026-05-12T17:05:12.256Z [CRITICAL] pod/cache-redis-redis-1: Data corruption detected in order table: 3 rows with invalid checksums
 Traceback (most recent call last):
   File "/app/src/workers/processor.py", line 56, in process
     result = await self._handler(event)
   File "/app/src/handlers/order.py", line 112, in handle_order
     raise ValidationError(f"Invalid order ID: {order_id}")
 src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:14.156Z [INFO    ] pod/user-api-1a2b3c4d5e: Health check passed — all dependencies healthy
-2026-05-12T15:43:22.996Z [WARN    ] pod/order-processor-4u3t2s1r0q: Memory usage above 75% threshold: 78.3% (6.2GB/8GB)
-2026-05-12T15:43:10.869Z [ERROR   ] pod/notification-worker-k1l2m3n4o5: Disk write error on /var/data/ingest: no space left on device
+2026-05-12T17:05:10.636Z [INFO    ] pod/auth-service-7a2d9e5f1c: Grpc call to inventory-service completed in 23ms
+2026-05-12T17:05:12.493Z [WARN    ] pod/payment-service-7d4f2a8e3b: Stale connection detected on db-replica-2 — reconnecting
+2026-05-12T17:05:07.449Z [ERROR   ] pod/gateway-9d3b7f2e5a: Connection refused to database host db-primary:5432 — ECONNREFUSED
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:21.260Z [CRITICAL] pod/inventory-service-5d9b3a7c1e: Disk space critical: /var/log is 98% full — emergency cleanup triggered
 Traceback (most recent call last):
   File "/app/src/database/connection_pool.py", line 87, in acquire
     conn = self._pool.get(timeout=5)
   File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
     raise asyncio.TimeoutError
 asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
-2026-05-12T15:43:11.638Z [CRITICAL] pod/cache-redis-redis-0: Database primary failover initiated: promoting db-replica-1 to primary
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:29.645Z [INFO    ] pod/auth-service-3e1f6b4c8d: TLS certificate valid for 89 days
-2026-05-12T15:43:25.396Z [WARN    ] pod/payment-service-4b8a2c6e9d: Rate limiter triggered for client 10.0.3.45: 120 req/s > 100 limit
-2026-05-12T15:43:17.742Z [ERROR   ] pod/gateway-2f5e8a1d3c: Failed to acquire distributed lock after 3 retries: lock-key=order-sync
-Traceback (most recent call last):
-  File "/app/src/http/client.py", line 204, in request
-    resp = await self._session.request(method, url, **kwargs)
-  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
-    raise RemoteProtocolError("Server disconnected")
-httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:06.189Z [CRITICAL] pod/inventory-service-3a7c1e5d9b: Memory pressure critical: OOM score adjusted to -998 for container api-gateway
-Traceback (most recent call last):
-  File "/app/src/http/client.py", line 204, in request
-    resp = await self._session.request(method, url, **kwargs)
-  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
-    raise RemoteProtocolError("Server disconnected")
-httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:05.062Z [INFO    ] pod/user-api-k1l2m3n4o5: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:50.326Z [WARN    ] pod/order-processor-9z8y7x6w5v: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:28.018Z [ERROR   ] pod/notification-worker-f6g7h8i9j0: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:38.978Z [CRITICAL] pod/cache-redis-redis-2: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
-Traceback (most recent call last):
-  File "/app/src/http/client.py", line 204, in request
-    resp = await self._session.request(method, url, **kwargs)
-  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
-    raise RemoteProtocolError("Server disconnected")
-httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:36.234Z [INFO    ] pod/auth-service-5c8d7f9a2b: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:07.624Z [WARN    ] pod/payment-service-1c9e5d7f4a: Circuit breaker half-open for inventory-service (1 success, 9 failures)
-2026-05-12T15:43:58.191Z [ERROR   ] pod/gateway-6c1a4e8b2f: Redis connection lost to cache-redis-0: READERR OOM command not allowed
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:25.882Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Data corruption detected in order table: 3 rows with invalid checksums
-Traceback (most recent call last):
-  File "/app/src/http/client.py", line 204, in request
-    resp = await self._session.request(method, url, **kwargs)
-  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
-    raise RemoteProtocolError("Server disconnected")
-httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:58.474Z [INFO    ] pod/user-api-6f7g8h9i0j: Grpc call to inventory-service completed in 23ms
-2026-05-12T15:43:17.566Z [WARN    ] pod/order-processor-p9o8n7m6l5: Stale connection detected on db-replica-2 — reconnecting
-2026-05-12T15:43:53.158Z [ERROR   ] pod/notification-worker-a1b2c3d4e5: Connection refused to database host db-primary:5432 — ECONNREFUSED
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:38.550Z [CRITICAL] pod/cache-redis-redis-1: Disk space critical: /var/log is 98% full — emergency cleanup triggered
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:42.916Z [INFO    ] pod/auth-service-7a2d9e5f1c: Health check passed — all dependencies healthy
-2026-05-12T15:43:51.075Z [WARN    ] pod/payment-service-7d4f2a8e3b: Memory usage above 75% threshold: 78.3% (6.2GB/8GB)
-2026-05-12T15:44:29.452Z [ERROR   ] pod/gateway-9d3b7f2e5a: Disk write error on /var/data/ingest: no space left on device
+2026-05-12T17:05:21.768Z [INFO    ] pod/user-api-1a2b3c4d5e: Health check passed — all dependencies healthy
+2026-05-12T17:05:28.305Z [WARN    ] pod/order-processor-4u3t2s1r0q: Memory usage above 75% threshold: 78.3% (6.2GB/8GB)
+2026-05-12T17:05:07.393Z [ERROR   ] pod/notification-worker-k1l2m3n4o5: Disk write error on /var/data/ingest: no space left on device
 Traceback (most recent call last):
   File "/app/src/database/connection_pool.py", line 87, in acquire
     conn = self._pool.get(timeout=5)
   File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
     raise asyncio.TimeoutError
 asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
-2026-05-12T15:44:34.055Z [CRITICAL] pod/inventory-service-5d9b3a7c1e: Database primary failover initiated: promoting db-replica-1 to primary
+2026-05-12T17:05:22.314Z [CRITICAL] pod/cache-redis-redis-0: Database primary failover initiated: promoting db-replica-1 to primary
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:19.500Z [INFO    ] pod/auth-service-3e1f6b4c8d: TLS certificate valid for 89 days
+2026-05-12T17:05:11.772Z [WARN    ] pod/payment-service-4b8a2c6e9d: Rate limiter triggered for client 10.0.3.45: 120 req/s > 100 limit
+2026-05-12T17:05:30.152Z [ERROR   ] pod/gateway-2f5e8a1d3c: Failed to acquire distributed lock after 3 retries: lock-key=order-sync
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:35.590Z [CRITICAL] pod/inventory-service-3a7c1e5d9b: Memory pressure critical: OOM score adjusted to -998 for container api-gateway
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:48.626Z [INFO    ] pod/user-api-k1l2m3n4o5: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:35.317Z [WARN    ] pod/order-processor-9z8y7x6w5v: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:47.477Z [ERROR   ] pod/notification-worker-f6g7h8i9j0: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:24.669Z [CRITICAL] pod/cache-redis-redis-2: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:55.194Z [INFO    ] pod/auth-service-5c8d7f9a2b: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:24.714Z [WARN    ] pod/payment-service-1c9e5d7f4a: Circuit breaker half-open for inventory-service (1 success, 9 failures)
+2026-05-12T17:05:39.168Z [ERROR   ] pod/gateway-6c1a4e8b2f: Redis connection lost to cache-redis-0: READERR OOM command not allowed
 Traceback (most recent call last):
   File "/app/src/workers/processor.py", line 56, in process
     result = await self._handler(event)
   File "/app/src/handlers/order.py", line 112, in handle_order
     raise ValidationError(f"Invalid order ID: {order_id}")
 src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:53.677Z [INFO    ] pod/user-api-1a2b3c4d5e: TLS certificate valid for 89 days
-2026-05-12T15:44:10.207Z [WARN    ] pod/order-processor-4u3t2s1r0q: Rate limiter triggered for client 10.0.3.45: 120 req/s > 100 limit
-2026-05-12T15:43:34.442Z [ERROR   ] pod/notification-worker-k1l2m3n4o5: Failed to acquire distributed lock after 3 retries: lock-key=order-sync
-Traceback (most recent call last):
-  File "/app/src/http/client.py", line 204, in request
-    resp = await self._session.request(method, url, **kwargs)
-  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
-    raise RemoteProtocolError("Server disconnected")
-httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:43.861Z [CRITICAL] pod/cache-redis-redis-0: Memory pressure critical: OOM score adjusted to -998 for container api-gateway
-Traceback (most recent call last):
-  File "/app/src/http/client.py", line 204, in request
-    resp = await self._session.request(method, url, **kwargs)
-  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
-    raise RemoteProtocolError("Server disconnected")
-httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:22.040Z [INFO    ] pod/auth-service-3e1f6b4c8d: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:53.249Z [WARN    ] pod/payment-service-4b8a2c6e9d: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:15.683Z [ERROR   ] pod/gateway-2f5e8a1d3c: Failed to deserialize request body: unexpected token at position 142
+2026-05-12T17:05:38.926Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Data corruption detected in order table: 3 rows with invalid checksums
 Traceback (most recent call last):
   File "/app/src/workers/processor.py", line 56, in process
     result = await self._handler(event)
   File "/app/src/handlers/order.py", line 112, in handle_order
     raise ValidationError(f"Invalid order ID: {order_id}")
 src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:44:06.106Z [CRITICAL] pod/inventory-service-3a7c1e5d9b: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:06:06.754Z [INFO    ] pod/user-api-6f7g8h9i0j: Grpc call to inventory-service completed in 23ms
+2026-05-12T17:05:24.812Z [WARN    ] pod/order-processor-p9o8n7m6l5: Stale connection detected on db-replica-2 — reconnecting
+2026-05-12T17:05:26.300Z [ERROR   ] pod/notification-worker-a1b2c3d4e5: Connection refused to database host db-primary:5432 — ECONNREFUSED
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:44:27.695Z [INFO    ] pod/user-api-k1l2m3n4o5: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:44:35.751Z [WARN    ] pod/order-processor-9z8y7x6w5v: Circuit breaker half-open for inventory-service (1 success, 9 failures)
-2026-05-12T15:43:39.649Z [ERROR   ] pod/notification-worker-f6g7h8i9j0: Redis connection lost to cache-redis-0: READERR OOM command not allowed
+2026-05-12T17:06:12.504Z [CRITICAL] pod/cache-redis-redis-1: Disk space critical: /var/log is 98% full — emergency cleanup triggered
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-12T17:05:41.445Z [INFO    ] pod/auth-service-7a2d9e5f1c: Health check passed — all dependencies healthy
+2026-05-12T17:05:43.809Z [WARN    ] pod/payment-service-7d4f2a8e3b: Memory usage above 75% threshold: 78.3% (6.2GB/8GB)
+2026-05-12T17:06:30.162Z [ERROR   ] pod/gateway-9d3b7f2e5a: Disk write error on /var/data/ingest: no space left on device
+Traceback (most recent call last):
+  File "/app/src/database/connection_pool.py", line 87, in acquire
+    conn = self._pool.get(timeout=5)
+  File "/usr/lib/python3.11/asyncio/queues.py", line 132, in get
+    raise asyncio.TimeoutError
+asyncio.TimeoutError: Get from queue timed out after 5.0 seconds
+2026-05-12T17:05:20.134Z [CRITICAL] pod/inventory-service-5d9b3a7c1e: Database primary failover initiated: promoting db-replica-1 to primary
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:06:34.949Z [INFO    ] pod/user-api-1a2b3c4d5e: TLS certificate valid for 89 days
+2026-05-12T17:06:40.487Z [WARN    ] pod/order-processor-4u3t2s1r0q: Rate limiter triggered for client 10.0.3.45: 120 req/s > 100 limit
+2026-05-12T17:05:25.495Z [ERROR   ] pod/notification-worker-k1l2m3n4o5: Failed to acquire distributed lock after 3 retries: lock-key=order-sync
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:27.974Z [CRITICAL] pod/cache-redis-redis-0: Memory pressure critical: OOM score adjusted to -998 for container api-gateway
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:31.142Z [INFO    ] pod/auth-service-3e1f6b4c8d: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:36.634Z [WARN    ] pod/payment-service-4b8a2c6e9d: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:40.124Z [ERROR   ] pod/gateway-2f5e8a1d3c: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:30.582Z [CRITICAL] pod/inventory-service-3a7c1e5d9b: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:36.440Z [INFO    ] pod/user-api-k1l2m3n4o5: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:06:50.787Z [WARN    ] pod/order-processor-9z8y7x6w5v: Circuit breaker half-open for inventory-service (1 success, 9 failures)
+2026-05-12T17:06:15.265Z [ERROR   ] pod/notification-worker-f6g7h8i9j0: Redis connection lost to cache-redis-0: READERR OOM command not allowed
 Traceback (most recent call last):
   File "/app/src/workers/processor.py", line 56, in process
     result = await self._handler(event)
   File "/app/src/handlers/order.py", line 112, in handle_order
     raise ValidationError(f"Invalid order ID: {order_id}")
 src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:45:02.994Z [CRITICAL] pod/cache-redis-redis-2: Data corruption detected in order table: 3 rows with invalid checksums
-Traceback (most recent call last):
-  File "/app/src/http/client.py", line 204, in request
-    resp = await self._session.request(method, url, **kwargs)
-  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
-    raise RemoteProtocolError("Server disconnected")
-httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:44:24.777Z [INFO    ] pod/auth-service-5c8d7f9a2b: Grpc call to inventory-service completed in 23ms
-2026-05-12T15:44:08.691Z [WARN    ] pod/payment-service-1c9e5d7f4a: Stale connection detected on db-replica-2 — reconnecting
-2026-05-12T15:42:52.062Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:42:52.558Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:42:54.986Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+2026-05-12T17:06:53.969Z [CRITICAL] pod/cache-redis-redis-2: Data corruption detected in order table: 3 rows with invalid checksums
 Traceback (most recent call last):
   File "/app/src/workers/processor.py", line 56, in process
     result = await self._handler(event)
   File "/app/src/handlers/order.py", line 112, in handle_order
     raise ValidationError(f"Invalid order ID: {order_id}")
 src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:42:57.107Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:06:16.734Z [INFO    ] pod/auth-service-5c8d7f9a2b: Grpc call to inventory-service completed in 23ms
+2026-05-12T17:06:01.066Z [WARN    ] pod/payment-service-1c9e5d7f4a: Stale connection detected on db-replica-2 — reconnecting
+2026-05-12T17:04:57.986Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:00.339Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:03.420Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:02.781Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:42:53.064Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:42:54.863Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:42:56.485Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:01.541Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:04.375Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:03.077Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:42:54.518Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:42:56.567Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:42:58.642Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:42:56.501Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:05.208Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:04:59.243Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:01.036Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:02.773Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:06.433Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:42:55.072Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:42:58.201Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:42:58.629Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:42:59.494Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:03.961Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:05.920Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:42:56.509Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:42:56.955Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:01.362Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:05.347Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:05.070Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:04:59.883Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:02.324Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:03.186Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:02.004Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:42:57.224Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:42:59.150Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:01.540Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:03.114Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:08.762Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:01.808Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:42:58.079Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:42:59.548Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:03.505Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:00.991Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:07.441Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:00.886Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:01.817Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:03.139Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:02.047Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:42:59.102Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:00.907Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:04.131Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:07.360Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:09.637Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:05.811Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:00.487Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:00.707Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:02.840Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:05.634Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:07.634Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:01.888Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:02.790Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:07.505Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:11.611Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:01.089Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:03.861Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:05.885Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:04.307Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:10.439Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:08.710Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:02.092Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:04.097Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:04.015Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:04.574Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:10.085Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:02.890Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:05.816Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:04.188Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:08.150Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:03.095Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:05.085Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:07.439Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:10.482Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:05.290Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:08.365Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:04.098Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:04.653Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:06.590Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:07.795Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:08.414Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:03.892Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:04.970Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:06.753Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:09.319Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:05.542Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:06.652Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:07.062Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:07.520Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:12.798Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:09.125Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:06.444Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:07.408Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:10.373Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:08.361Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:11.998Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:04.894Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:07.827Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:06.569Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:17.291Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:07.108Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:08.536Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:11.625Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:12.957Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:12.466Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:15.604Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:08.332Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:09.158Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:12.024Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:13.885Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:16.767Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:05.897Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:07.457Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:07.919Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:19.855Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:09.525Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:10.093Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:13.461Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:14.248Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:10.606Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:15.580Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:10.259Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:10.204Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:12.712Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:16.321Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:14.966Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:07.146Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:09.482Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:09.876Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:21.668Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:11.514Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:13.980Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:16.673Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:18.536Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:10.708Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:19.214Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
-2026-05-12T15:43:12.155Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
-2026-05-12T15:43:13.184Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
-2026-05-12T15:43:17.791Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
-Traceback (most recent call last):
-  File "/app/src/workers/processor.py", line 56, in process
-    result = await self._handler(event)
-  File "/app/src/handlers/order.py", line 112, in handle_order
-    raise ValidationError(f"Invalid order ID: {order_id}")
-src.exceptions.ValidationError: Invalid order ID: null — expected UUID v4
-2026-05-12T15:43:14.594Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+2026-05-12T17:05:18.075Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:08.020Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:09.910Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:10.483Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
 Traceback (most recent call last):
   File "/app/src/http/client.py", line 204, in request
     resp = await self._session.request(method, url, **kwargs)
   File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
     raise RemoteProtocolError("Server disconnected")
 httpx.RemoteProtocolError: Server disconnected — connection reset by peer
-2026-05-12T15:43:17.534Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:15.932Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:15.714Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:08.904Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:10.920Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:10.001Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:13.661Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:19.146Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:09.907Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:10.562Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:14.944Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:13.847Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:18.335Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:11.031Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:13.675Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:13.915Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:19.755Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:16.950Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:12.366Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:13.435Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:17.657Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:17.764Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:18.810Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:13.394Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:14.338Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:16.635Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:18.763Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:23.179Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:13.916Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:16.357Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:14.910Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:21.008Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:17.568Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:14.917Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:17.719Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:19.086Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:16.308Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:20.826Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:15.919Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:17.401Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:21.665Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:20.178Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:25.899Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)
+2026-05-12T17:05:16.922Z [INFO    ] pod/auth-service-5c8d7f9a2b: GET /api/v1/users 200 OK (12ms)
+2026-05-12T17:05:19.241Z [WARN    ] pod/payment-service-1c9e5d7f4a: Connection pool utilization at 82% (41/50 connections)
+2026-05-12T17:05:22.792Z [ERROR   ] pod/gateway-6c1a4e8b2f: Failed to deserialize request body: unexpected token at position 142
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:19.144Z [CRITICAL] pod/inventory-service-8e2d5f9a1c: Pod crash-looping: OOMKilled in payment-service-7d4f (restart count: 5)
+Traceback (most recent call last):
+  File "/app/src/http/client.py", line 204, in request
+    resp = await self._session.request(method, url, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/httpx/_client.py", line 892
+    raise RemoteProtocolError("Server disconnected")
+httpx.RemoteProtocolError: Server disconnected — connection reset by peer
+2026-05-12T17:05:26.899Z [INFO    ] pod/user-api-6f7g8h9i0j: Cache hit ratio: 94.2% (redis-primary:6379)

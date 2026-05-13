@@ -56,6 +56,14 @@ watcher:
 predictor:
   window_size: 200                  # max events per service
 
+metrics:
+  source:
+    type: mock                      # "mock" or "folder"
+    folder_path: ./demo_metrics     # directory for CSV metric files
+  thresholds:
+    cpu_percent: 85                 # alert when CPU exceeds this %
+    memory_percent: 90              # alert when memory exceeds this %
+  stream_interval_seconds: 5        # interval between metric samples
 llm:
   provider: llama_cpp               # "llama_cpp" or "openai"
   llama_cpp:
@@ -84,6 +92,11 @@ llm:
 | `MOCK_LOG_SERVICES` | comma-separated list | Services in generated logs |
 | `LOG_SOURCE_TYPE` | `mock` | Override log source type |
 | `LOG_SOURCE_FOLDER_PATH` | `mocks/logs` | Override log source directory |
+| `METRICS_SOURCE_TYPE` | `mock` | Override metric source type |
+| `METRICS_FOLDER_PATH` | `./demo_metrics` | Override metric source directory |
+| `METRICS_CPU_THRESHOLD` | `85.0` | CPU alert threshold percentage |
+| `METRICS_MEMORY_THRESHOLD` | `90.0` | Memory alert threshold percentage |
+| `METRICS_STREAM_INTERVAL` | `5.0` | Seconds between metric samples |
 
 ## Watcher Configuration
 
@@ -99,6 +112,28 @@ Watcher behavior is controlled via constructor parameters (not exposed as enviro
 
 These can be set via CLI flags (e.g., `python -m src watch-logs --min-severity high --dedup-ttl 600`) or programmatically when constructing a `LogWatcher`.
 
+## Metrics Configuration
+
+Metric source behavior is controlled via `metrics.source.type` in `config/config.yaml`:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `source.type` | `mock` | Source type: `mock` or `folder` |
+| `source.folder_path` | `./demo_metrics` | Directory for CSV metric files (folder mode) |
+| `thresholds.cpu_percent` | `85.0` | CPU usage alert threshold (%) |
+| `thresholds.memory_percent` | `90.0` | Memory usage alert threshold (%) |
+| `stream_interval_seconds` | `5.0` | Interval between metric samples |
+
+**Switching metric sources:**
+```yaml
+# config/config.yaml
+metrics:
+  source:
+    type: folder              # "mock" or "folder"
+    folder_path: /tmp/metrics
+```
+
+Or via environment variable: `METRICS_SOURCE_TYPE=folder`
 ## Programmatic Configuration
 
 ```python
@@ -142,6 +177,12 @@ project/
 │   │       ├── __init__.py
 │   │       ├── predictor.py      # HeuristicPredictor (4 rules)
 │   │       └── models.py         # RiskLevel, PredictorEvent
+│   │   └── metrics/
+│   │       ├── __init__.py
+│   │       ├── base.py           # BaseMetricSource ABC + MetricSample dataclass
+│   │       ├── factory.py        # create_metric_source(settings) factory
+│   │       ├── mock_metric_source.py  # Mock metric source with trend simulation
+│   │       └── folder_metric_source.py  # Tails *.csv files in a directory
 │   ├── providers/
 │   │   ├── __init__.py
 │   │   ├── base.py               # Abstract base class + AnalysisResult
@@ -162,6 +203,11 @@ project/
 │   │   ├── predictor/
 │   │   │   ├── __init__.py
 │   │   │   └── test_predictor.py
+│   │   ├── metrics/
+│   │   │   ├── __init__.py
+│   │   │   ├── test_metric_models.py
+│   │   │   ├── test_mock_metric_source.py
+│   │   │   └── test_folder_metric_source.py
 │   │   ├── providers/
 │   │   │   ├── __init__.py
 │   │   │   ├── test_base.py

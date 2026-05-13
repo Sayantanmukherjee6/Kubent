@@ -35,6 +35,14 @@ watcher:
 predictor:
   window_size: 200                  # max events per service in rolling window
 
+metrics:
+  source:
+    type: mock                      # "mock" or "folder"
+    folder_path: ./demo_metrics     # directory for CSV metric files
+  thresholds:
+    cpu_percent: 85                 # alert when CPU exceeds this %
+    memory_percent: 90              # alert when memory exceeds this %
+  stream_interval_seconds: 5        # interval between metric samples
 llm:
   provider: llama_cpp               # "llama_cpp" or "openai"
 

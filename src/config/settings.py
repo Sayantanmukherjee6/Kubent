@@ -81,6 +81,25 @@ class PredictorConfig:
 
 
 @dataclass
+class MetricSourceConfig:
+    type: str = "mock"
+    folder_path: str = "./demo_metrics"
+
+
+@dataclass
+class MetricsThresholds:
+    cpu_percent: float = 85.0
+    memory_percent: float = 90.0
+
+
+@dataclass
+class MetricsConfig:
+    source: MetricSourceConfig = field(default_factory=MetricSourceConfig)
+    thresholds: MetricsThresholds = field(default_factory=MetricsThresholds)
+    stream_interval_seconds: float = 5.0
+
+
+@dataclass
 class LlamaCppConfig:
     base_url: str = "http://localhost:8080/v1"
     model_name: str = "./models/llama-model.gguf"
@@ -119,6 +138,7 @@ class Settings:
         settings.llm.provider          # LlmProviderType.LLAMA_CPP
         settings.mock.log_count        # 50
         settings.watcher.dedup_ttl     # 300.0
+        settings.metrics.source.type   # "mock"
     """
 
     def __init__(
@@ -135,6 +155,7 @@ class Settings:
         self.mock = self._build_mock()
         self.watcher = self._build_watcher()
         self.predictor = self._build_predictor()
+        self.metrics = self._build_metrics()
         self.llm = self._build_llm()
 
     # ------------------------------------------------------------------
@@ -233,6 +254,19 @@ class Settings:
     def _build_predictor(self) -> PredictorConfig:
         return PredictorConfig(
             window_size=int(self._resolve("predictor.window_size", "PREDICTOR_WINDOW_SIZE", 200)),
+        )
+
+    def _build_metrics(self) -> MetricsConfig:
+        source_type = str(self._resolve("metrics.source.type", "METRICS_SOURCE_TYPE", "mock"))
+        folder_path = str(self._resolve("metrics.source.folder_path", "METRICS_FOLDER_PATH", "./demo_metrics"))
+        cpu_thresh = float(self._resolve("metrics.thresholds.cpu_percent", "METRICS_CPU_THRESHOLD", 85.0))
+        mem_thresh = float(self._resolve("metrics.thresholds.memory_percent", "METRICS_MEMORY_THRESHOLD", 90.0))
+        interval = float(self._resolve("metrics.stream_interval_seconds", "METRICS_STREAM_INTERVAL", 5.0))
+
+        return MetricsConfig(
+            source=MetricSourceConfig(type=source_type, folder_path=folder_path),
+            thresholds=MetricsThresholds(cpu_percent=cpu_thresh, memory_percent=mem_thresh),
+            stream_interval_seconds=interval,
         )
 
     def _build_llm(self) -> LlmConfig:

@@ -98,6 +98,17 @@ python -m src predict --source folder --log-dir /var/log/apps
 
 **Note:** Providers exist as independent infrastructure. They can analyze raw logs via `python -m src simulate`, but are NOT yet integrated into the watcher pipeline.
 
+### Metrics Subsystem
+
+- **`BaseMetricSource`** (`src/core/metrics/base.py`): ABC defining `start()`, `stop()`, and async `stream()` interface for metric sources.
+- **`MetricSample`** (`src/core/metrics/models.py`): Frozen dataclass holding timestamp, service name, CPU/memory/latency/error-rate values.
+- **`create_metric_source(settings)`** (`src/core/metrics/factory.py`): Factory that returns the correct source based on `metrics.source.type` in settings:
+  - `"mock"` → `MockMetricSource` (default, generates synthetic K8s metrics)
+  - `"folder"` → `FolderMetricSource` (tails `*.csv` files in a directory)
+- **`MockMetricSource`** (`src/core/metrics/mock_metric_source.py`): Generates realistic Kubernetes-style metrics with natural trend-based progression for CPU, memory, latency, and error rate.
+- **`FolderMetricSource`** (`src/core/metrics/folder_metric_source.py`): Polling-based watcher that tails `*.csv` metric files, parses CSV lines, and tracks per-file offsets.
+
+CSV format: `timestamp,service,cpu,memory,latency,error_rate`
 ## Design Principles
 
 - **Local-first**: Runs entirely on your machine with a local llama.cpp server.
