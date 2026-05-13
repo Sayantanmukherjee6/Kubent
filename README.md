@@ -219,6 +219,12 @@ machine learning, no external libraries.
 - **Z-Score Anomaly Detection** — flags values where |z| > 2.5
 - **Linear Trend Forecasting** — simple slope-based prediction: `future = current + slope * steps`
 
+**Prediction cooldown:** Duplicate prediction events for the same `(service, prediction_type)` are
+suppressed for a configurable cooldown period (default 30 seconds). This prevents event spam when a
+condition persists across multiple samples. Cooldown is per-service and per-prediction-type, so
+different services or different prediction types are not affected by each other. Set
+`cooldown_seconds=0` to disable.
+
 **Threshold forecasting:** Reads thresholds from `config.yaml` (`metrics.thresholds.cpu_percent`, `metrics.thresholds.memory_percent`). If the linear trend predicts crossing a threshold within 10 samples, a breach prediction event is emitted.
 
 **OOM risk heuristic (simple):**
@@ -323,6 +329,10 @@ specific failure pattern with natural metric correlations.
 default scenario: `gateway` → CPU growth, `payment-service` → latency spikes,
 `auth-service` → memory leak.
 
+**Per-service step isolation:** Each service maintains its own independent step counter within the
+scenario engine. Advancing one service does not affect the step progression of another, ensuring
+deterministic, isolated metric generation regardless of call ordering.
+
 **Generate demo CSV files:**
 
 ```bash
@@ -383,7 +393,7 @@ python -m src stream-logs --duration 15
 python -m src watch-logs --duration 15
 python -m src predict --duration 15
 python -m src simulate (depreciated, will be removed soon)
-python -m src stream-metrics --duration 15   # Stream mock metrics
+python -m src stream-metrics --duration 15   # Stream raw metrics (no prediction)
 python -m src predict-metrics --duration 15   # Stream metrics + statistical predictions
 python -m src generate-metrics --list       # List available scenarios
 python -m src generate-metrics              # Generate demo CSV files

@@ -137,6 +137,58 @@ def stream_logs(duration: float, source_file: str | None, source: str | None, lo
     asyncio.run(_run())
 
 # ---------------------------------------------------------------------------
+# stream-metrics — tail mock/folder metrics in real-time
+# ---------------------------------------------------------------------------
+
+@cli.command("stream-metrics")
+@click.option("--duration", "-d", default=10, type=float, help="Seconds to stream (0 = infinite).")
+@click.option("--source", "-S", default=None, type=click.Choice(["mock", "folder"], case_sensitive=False),
+              help="Override metric source type (mock or folder).")
+@click.option("--metric-dir", default=None, type=click.Path(),
+              help="Override metric directory path (used by folder source).")
+def stream_metrics(duration: float, source: str | None, metric_dir: str | None) -> None:
+    """Stream metrics in real-time from the configured metric source."""
+    from src.core.metrics.factory import create_metric_source
+
+    # Build settings with optional CLI overrides
+    overrides = {}
+    if source is not None:
+        overrides["metrics_source_type"] = source
+    if metric_dir is not None:
+        overrides["metrics_source_folder_path"] = metric_dir
+    settings = Settings(**overrides)
+
+    metric_source = create_metric_source(settings)
+
+    async def _run() -> None:
+        await metric_source.start()
+        try:
+            click.echo(click.style(f"Streaming from {metric_source.name} (Ctrl+C to stop)...", fg="cyan"))
+            click.echo(click.style("-" * 70, fg="bright_black"))
+            count = 0
+            start_time = asyncio.get_event_loop().time()
+            async for sample in metric_source.stream():
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if duration > 0 and elapsed > duration:
+                    break
+                ts = sample.timestamp.strftime("%H:%M:%S")
+                click.echo(
+                    f"[{ts}] {sample.service_name:25s} "
+                    f"CPU={sample.cpu_usage:5.1f}%  "
+                    f"MEM={sample.memory_usage:5.1f}%  "
+                    f"LAT={sample.latency_ms:6.1f}ms  "
+                    f"ERR={sample.error_rate:.4f}"
+                )
+                count += 1
+        except KeyboardInterrupt:
+            pass
+        finally:
+            await metric_source.stop()
+            click.echo(click.style(f"\nStopped. Received {count} metric samples.", fg="green"))
+
+    asyncio.run(_run())
+
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # watch-logs — stream logs and detect incidents (no LLM)
@@ -392,7 +444,7 @@ def predict_metrics(duration: float, source: str | None, metric_dir: str | None)
     if source is not None:
         overrides["metrics_source_type"] = source
     if metric_dir is not None:
-        overrides["metrics_folder_path"] = metric_dir
+        overrides["metrics_source_folder_path"] = metric_dir
     settings = Settings(**overrides)
 
     metric_source = create_metric_source(settings)

@@ -118,6 +118,38 @@ Options:
 | `--source` | -S | (from config) | Override: mock or folder |
 | `--log-dir` | — | (from config) | Override log directory path |
 
+### `stream-metrics` — Stream metrics in real-time
+
+Streams `MetricSample` objects from the configured metric source and prints
+formatted output to the terminal. Supports both `mock` (synthetic) and `folder`
+(CSV-based) metric sources. No prediction or alerting — raw metric streaming only.
+
+```bash
+python -m src stream-metrics --duration 10   # Stream for 10 seconds (mock source)
+python -m src stream-metrics --duration 0    # Infinite mode (Ctrl+C to stop)
+python -m src stream-metrics --source folder --metric-dir ./demo_metrics
+```
+
+**Example output:**
+
+```
+Streaming from mock-metrics:auth-service,payment-service,gateway (Ctrl+C to stop)...
+----------------------------------------------------------------------
+[10:30:45] auth-service                CPU= 52.3%  MEM= 55.0%  LAT= 105.2ms  ERR=0.0100
+[10:30:45] payment-service             CPU= 48.7%  MEM= 50.2%  LAT=  98.5ms  ERR=0.0050
+[10:30:45] gateway                     CPU= 60.1%  MEM= 62.8%  LAT= 120.0ms  ERR=0.0150
+...
+Stopped. Received 18 metric samples.
+```
+
+Options:
+
+| Option | Short | Default | Description |
+|---|---|---|---|
+| `--duration` | -d | 10 | Seconds to stream (0 = infinite) |
+| `--source` | -S | (from config) | Override: mock or folder |
+| `--metric-dir` | — | (from config) | Override metric directory path |
+
 ### `simulate` — Generate mock logs and send to LLM for analysis
 
 ```bash
@@ -155,6 +187,7 @@ python -m src predict --source folder --log-dir /tmp/k8s-logs
 python -m src --help
 python -m src generate-logs --help
 python -m src stream-logs --help
+python -m src stream-metrics --help
 python -m src watch-logs --help
 python -m src predict --help
 python -m src simulate --help
