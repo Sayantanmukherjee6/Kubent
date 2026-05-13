@@ -247,12 +247,13 @@ class ScenarioEngine:
 
         # Per-service states keyed by (service, scenario_name) to allow multiple scenarios per service
         self._states: Dict[str, _SvcState] = {}
-        self._step: int = 0
+        # Per-service step counters for independent progression
+        self._steps: Dict[str, int] = {}
 
     def reset(self) -> None:
-        """Reset all states and step counter."""
+        """Reset all states and step counters."""
         self._states.clear()
-        self._step = 0
+        self._steps.clear()
 
     def get_state(self, service: str) -> _SvcState:
         """Get or create state for a service."""
@@ -261,9 +262,18 @@ class ScenarioEngine:
             self._states[key] = _SvcState()
         return self._states[key]
 
+    def _get_step(self, service: str) -> int:
+        """Get the current step for a specific service."""
+        return self._steps.get(service, 0)
+
+    def _inc_step(self, service: str) -> None:
+        """Increment the step counter for a specific service."""
+        self._steps[service] = self._steps.get(service, 0) + 1
+
     def advance(self, service: str) -> _SvcState:
         """Advance all active scenarios for one step and return the combined state."""
         state = self.get_state(service)
+        step = self._get_step(service)
 
         if len(self._active_scenarios) == 1:
             # Single scenario: use direct sub-state (no blending needed)
@@ -273,7 +283,7 @@ class ScenarioEngine:
             if sub_state is None:
                 sub_state = _SvcState()
                 self._states[sub_key] = sub_state
-            scenario.advance(sub_state, self._step)
+            scenario.advance(sub_state, step)
             state.cpu = sub_state.cpu
             state.memory = sub_state.memory
             state.latency = sub_state.latency
@@ -290,7 +300,7 @@ class ScenarioEngine:
                 orig_cpu, orig_mem, orig_lat, orig_err = (
                     sub_state.cpu, sub_state.memory, sub_state.latency, sub_state.error_rate
                 )
-                scenario.advance(sub_state, self._step)
+                scenario.advance(sub_state, step)
 
                 state.cpu += (sub_state.cpu - orig_cpu) * 0.3
                 state.memory += (sub_state.memory - orig_mem) * 0.3
@@ -303,11 +313,14 @@ class ScenarioEngine:
         state.latency = max(20.0, min(800.0, state.latency))
         state.error_rate = max(0.0, min(0.15, state.error_rate))
 
-        self._step += 1
+        self._inc_step(service)
         return state
 
-    def get_step(self) -> int:
-        return self._step
+    def get_step(self, service: str = "") -> int:
+        """Return the step count for a specific service, or the max across all if no service given."""
+        if service:
+            return self._steps.get(service, 0)
+        return max(self._steps.values()) if self._steps else 0
 
     @staticmethod
     def list_scenarios() -> List[str]:

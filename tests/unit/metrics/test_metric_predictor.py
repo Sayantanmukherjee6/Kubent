@@ -22,7 +22,7 @@ from src.core.metrics.events import (
     MetricSeverity,
 )
 from src.core.metrics.models import MetricSample
-from src.core.metrics.predictor import MetricPredictor, RollingWindow
+from src.core.metrics.predictor import MetricPredictor, RollingWindow, _PredictionCooldown
 from src.core.metrics.rules import PredictionRule, PredictionRules
 
 
@@ -172,7 +172,7 @@ class TestZScoreAnomalyDetection:
 
     @pytest.mark.asyncio
     async def test_no_anomaly_with_stable_values(self) -> None:
-        predictor = MetricPredictor(anomaly_z_threshold=2.5)
+        predictor = MetricPredictor(anomaly_z_threshold=2.5, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for i in range(20):
             sample = _make_sample(cpu=50.0 + (i % 3), memory=60.0, latency=100.0, ts=ts)
@@ -183,7 +183,7 @@ class TestZScoreAnomalyDetection:
 
     @pytest.mark.asyncio
     async def test_cpu_anomaly_detected(self) -> None:
-        predictor = MetricPredictor(anomaly_z_threshold=2.5)
+        predictor = MetricPredictor(anomaly_z_threshold=2.5, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         # Feed stable values first
         for i in range(20):
@@ -195,7 +195,7 @@ class TestZScoreAnomalyDetection:
 
     @pytest.mark.asyncio
     async def test_memory_anomaly_detected(self) -> None:
-        predictor = MetricPredictor(anomaly_z_threshold=2.5)
+        predictor = MetricPredictor(anomaly_z_threshold=2.5, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for i in range(20):
             await predictor.process(_make_sample(cpu=50.0, memory=60.0, latency=100.0, ts=ts))
@@ -205,7 +205,7 @@ class TestZScoreAnomalyDetection:
 
     @pytest.mark.asyncio
     async def test_latency_anomaly_detected(self) -> None:
-        predictor = MetricPredictor(anomaly_z_threshold=2.5)
+        predictor = MetricPredictor(anomaly_z_threshold=2.5, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for i in range(20):
             await predictor.process(_make_sample(cpu=50.0, memory=60.0, latency=100.0, ts=ts))
@@ -216,7 +216,7 @@ class TestZScoreAnomalyDetection:
     @pytest.mark.asyncio
     async def test_no_anomaly_with_few_samples(self) -> None:
         """Z-score needs at least 3 samples."""
-        predictor = MetricPredictor(anomaly_z_threshold=2.5)
+        predictor = MetricPredictor(anomaly_z_threshold=2.5, cooldown_seconds=0.0)
         for i in range(2):
             events = await predictor.process(_make_sample(cpu=50.0, memory=60.0, latency=100.0))
             anomaly_events = [e for e in events if "Anomalous" in e.message]
@@ -236,6 +236,7 @@ class TestThresholdPrediction:
             cpu_threshold=85.0,
             memory_threshold=90.0,
             window_size=100,
+            cooldown_seconds=0.0,
         )
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         # Feed steadily increasing CPU values (from 72 to ~84 over 25 samples)
@@ -252,6 +253,7 @@ class TestThresholdPrediction:
             cpu_threshold=85.0,
             memory_threshold=90.0,
             window_size=100,
+            cooldown_seconds=0.0,
         )
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         # Feed steadily increasing memory values (from 75 to ~89 over 20 samples)
@@ -264,7 +266,7 @@ class TestThresholdPrediction:
 
     @pytest.mark.asyncio
     async def test_no_breach_when_below_threshold(self) -> None:
-        predictor = MetricPredictor(cpu_threshold=85.0, memory_threshold=90.0)
+        predictor = MetricPredictor(cpu_threshold=85.0, memory_threshold=90.0, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for i in range(20):
             await predictor.process(_make_sample(cpu=30.0 + i * 0.5, memory=40.0, latency=100.0, ts=ts))
@@ -275,7 +277,7 @@ class TestThresholdPrediction:
     @pytest.mark.asyncio
     async def test_no_breach_when_already_above(self) -> None:
         """Should not predict breach if already above threshold."""
-        predictor = MetricPredictor(cpu_threshold=85.0, memory_threshold=90.0)
+        predictor = MetricPredictor(cpu_threshold=85.0, memory_threshold=90.0, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for i in range(20):
             await predictor.process(_make_sample(cpu=90.0, memory=50.0, latency=100.0, ts=ts))
@@ -293,7 +295,7 @@ class TestOomPrediction:
 
     @pytest.mark.asyncio
     async def test_oom_detected_with_rising_memory_and_latency(self) -> None:
-        predictor = MetricPredictor(memory_threshold=90.0)
+        predictor = MetricPredictor(memory_threshold=90.0, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         # Feed rising memory (near threshold) + rising latency
         for i in range(15):
@@ -306,7 +308,7 @@ class TestOomPrediction:
 
     @pytest.mark.asyncio
     async def test_no_oom_when_memory_not_rising(self) -> None:
-        predictor = MetricPredictor(memory_threshold=90.0)
+        predictor = MetricPredictor(memory_threshold=90.0, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         # Stable memory at high level
         for i in range(15):
@@ -317,7 +319,7 @@ class TestOomPrediction:
 
     @pytest.mark.asyncio
     async def test_no_oom_when_memory_too_low(self) -> None:
-        predictor = MetricPredictor(memory_threshold=90.0)
+        predictor = MetricPredictor(memory_threshold=90.0, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for i in range(15):
             mem = 50.0 + i * 1.0  # rises from 50 to 64 (below 80% of 90 = 72)
@@ -329,7 +331,7 @@ class TestOomPrediction:
 
     @pytest.mark.asyncio
     async def test_no_oom_when_latency_not_rising(self) -> None:
-        predictor = MetricPredictor(memory_threshold=90.0)
+        predictor = MetricPredictor(memory_threshold=90.0, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for i in range(15):
             mem = 73.0 + i * 1.0
@@ -353,6 +355,7 @@ class TestMultiServiceIsolation:
             cpu_threshold=85.0,
             memory_threshold=90.0,
             window_size=100,
+            cooldown_seconds=0.0,
         )
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
@@ -377,7 +380,7 @@ class TestMultiServiceIsolation:
 
     @pytest.mark.asyncio
     async def test_reset_service(self) -> None:
-        predictor = MetricPredictor(window_size=100)
+        predictor = MetricPredictor(window_size=100, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for i in range(20):
             await predictor.process(_make_sample(service="svc-a", cpu=50.0, memory=60.0, latency=100.0, ts=ts))
@@ -386,7 +389,7 @@ class TestMultiServiceIsolation:
 
     @pytest.mark.asyncio
     async def test_reset_all(self) -> None:
-        predictor = MetricPredictor(window_size=100)
+        predictor = MetricPredictor(window_size=100, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for svc in ["svc-a", "svc-b"]:
             for _ in range(5):
@@ -409,6 +412,7 @@ class TestPredictionEventGeneration:
             cpu_threshold=85.0,
             memory_threshold=90.0,
             window_size=100,
+            cooldown_seconds=0.0,
         )
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
@@ -430,7 +434,7 @@ class TestPredictionEventGeneration:
 
     @pytest.mark.asyncio
     async def test_event_severity_for_high_breach(self) -> None:
-        predictor = MetricPredictor(cpu_threshold=85.0, memory_threshold=90.0, window_size=100)
+        predictor = MetricPredictor(cpu_threshold=85.0, memory_threshold=90.0, window_size=100, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
         for i in range(25):
@@ -445,7 +449,7 @@ class TestPredictionEventGeneration:
 
     @pytest.mark.asyncio
     async def test_oom_event_severity(self) -> None:
-        predictor = MetricPredictor(memory_threshold=90.0, window_size=100)
+        predictor = MetricPredictor(memory_threshold=90.0, window_size=100, cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
         for i in range(15):
@@ -462,7 +466,7 @@ class TestPredictionEventGeneration:
 
     @pytest.mark.asyncio
     async def test_no_events_for_normal_values(self) -> None:
-        predictor = MetricPredictor()
+        predictor = MetricPredictor(cooldown_seconds=0.0)
         ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
         for i in range(10):
             events = await predictor.process(_make_sample(cpu=50.0, memory=50.0, latency=100.0, ts=ts))
@@ -606,3 +610,223 @@ class TestMetricPredictionEvent:
         expected = {"low", "medium", "high", "critical"}
         actual = {s.value for s in MetricSeverity}
         assert actual == expected
+
+
+# ---------------------------------------------------------------------------
+# Cooldown tests
+# ---------------------------------------------------------------------------
+
+class TestPredictionCooldown:
+    """Tests for the _PredictionCooldown class."""
+
+    def test_first_prediction_not_suppressed(self) -> None:
+        cd = _PredictionCooldown(seconds=30.0)
+        now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        assert not cd.is_cooldown_active("svc", "CPU_ANOMALY", now)
+
+    def test_second_prediction_suppressed_within_seconds(self) -> None:
+        cd = _PredictionCooldown(seconds=30.0)
+        now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        cd.record("svc", "CPU_ANOMALY", now)
+        # Same second — still in cooldown
+        assert cd.is_cooldown_active("svc", "CPU_ANOMALY", now)
+
+    def test_second_prediction_suppressed_within_30s(self) -> None:
+        cd = _PredictionCooldown(seconds=30.0)
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        cd.record("svc", "CPU_ANOMALY", t0)
+        t1 = t0.replace(second=t0.second + 10)
+        assert cd.is_cooldown_active("svc", "CPU_ANOMALY", t1)
+
+    def test_prediction_allowed_after_cooldown_expires(self) -> None:
+        cd = _PredictionCooldown(seconds=30.0)
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        cd.record("svc", "CPU_ANOMALY", t0)
+        t1 = t0.replace(minute=t0.minute + 1)  # 60s later
+        assert not cd.is_cooldown_active("svc", "CPU_ANOMALY", t1)
+
+    def test_different_services_independent(self) -> None:
+        cd = _PredictionCooldown(seconds=30.0)
+        now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        cd.record("svc-a", "CPU_ANOMALY", now)
+        # svc-a is in cooldown, svc-b is not
+        assert cd.is_cooldown_active("svc-a", "CPU_ANOMALY", now)
+        assert not cd.is_cooldown_active("svc-b", "CPU_ANOMALY", now)
+
+    def test_different_prediction_types_independent(self) -> None:
+        cd = _PredictionCooldown(seconds=30.0)
+        now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        cd.record("svc", "CPU_ANOMALY", now)
+        # CPU_ANOMALY is in cooldown, MEMORY_ANOMALY is not
+        assert cd.is_cooldown_active("svc", "CPU_ANOMALY", now)
+        assert not cd.is_cooldown_active("svc", "MEMORY_ANOMALY", now)
+
+    def test_cooldown_by_sample_count(self) -> None:
+        cd = _PredictionCooldown(seconds=0.0, samples=5)
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        cd.record("svc", "CPU_ANOMALY", t0)
+        # Immediately after recording, still in sample cooldown
+        assert cd.is_cooldown_active("svc", "CPU_ANOMALY", t0)
+        # Simulate 5 sample increments
+        cd._sample_counter += 5
+        assert not cd.is_cooldown_active("svc", "CPU_ANOMALY", t0)
+
+    def test_cooldown_reset(self) -> None:
+        cd = _PredictionCooldown(seconds=30.0)
+        now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        cd.record("svc", "CPU_ANOMALY", now)
+        assert cd.is_cooldown_active("svc", "CPU_ANOMALY", now)
+        cd.reset()
+        assert not cd.is_cooldown_active("svc", "CPU_ANOMALY", now)
+
+
+class TestPredictorCooldownIntegration:
+    """Tests that MetricPredictor correctly applies cooldown to events."""
+
+    @pytest.mark.asyncio
+    async def test_duplicate_prediction_suppressed(self) -> None:
+        """Same prediction type for same service should be suppressed."""
+        predictor = MetricPredictor(
+            cpu_threshold=85.0,
+            memory_threshold=90.0,
+            cooldown_seconds=30.0,
+        )
+        ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        # Feed rising CPU — breach fires during warmup (around step 20)
+        all_events: list[MetricPredictionEvent] = []
+        for i in range(25):
+            events = await predictor.process(_make_sample(cpu=72.0 + i * 0.48, memory=50.0, latency=100.0, ts=ts))
+            all_events.extend(events)
+
+        # At least one CPU breach should have fired during warmup
+        cpu_breaches_warmup = [e for e in all_events if e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH]
+        assert len(cpu_breaches_warmup) >= 1
+
+        # Next call at same timestamp should be suppressed (within cooldown)
+        events2 = await predictor.process(_make_sample(cpu=84.0, memory=50.0, latency=100.0, ts=ts))
+        cpu_breaches2 = [e for e in events2 if e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH]
+        assert len(cpu_breaches2) == 0
+
+    @pytest.mark.asyncio
+    async def test_different_prediction_types_not_suppressed(self) -> None:
+        """Different prediction types should not suppress each other."""
+        predictor = MetricPredictor(
+            cpu_threshold=85.0,
+            memory_threshold=90.0,
+            cooldown_seconds=0.0,  # disable to test type isolation cleanly
+        )
+        ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        # Feed rising CPU + rising memory
+        for i in range(25):
+            cpu = 72.0 + i * 0.48
+            mem = 75.0 + i * 0.75
+            await predictor.process(_make_sample(cpu=cpu, memory=mem, latency=100.0, ts=ts))
+
+        events = await predictor.process(_make_sample(cpu=84.0, memory=88.0, latency=100.0, ts=ts))
+        cpu_breaches = [e for e in events if e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH]
+        mem_breaches = [e for e in events if e.prediction_type == MetricPredictionType.PREDICTED_MEMORY_BREACH]
+        # Both should fire (different types)
+        assert len(cpu_breaches) >= 1
+        assert len(mem_breaches) >= 1
+
+    @pytest.mark.asyncio
+    async def test_different_services_independent_cooldowns(self) -> None:
+        """Cooldown for svc-a should not affect svc-b."""
+        predictor = MetricPredictor(
+            cpu_threshold=85.0,
+            memory_threshold=90.0,
+            cooldown_seconds=30.0,
+        )
+        ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        # Feed rising CPU for svc-a only (breach fires during warmup)
+        for i in range(25):
+            cpu = 72.0 + i * 0.48
+            await predictor.process(_make_sample(service="svc-a", cpu=cpu, memory=50.0, latency=100.0, ts=ts))
+
+        # Feed rising CPU for svc-b (breach fires during warmup)
+        for i in range(25):
+            cpu = 72.0 + i * 0.48
+            await predictor.process(_make_sample(service="svc-b", cpu=cpu, memory=50.0, latency=100.0, ts=ts))
+
+        # svc-a: next call suppressed (cooldown active from warmup)
+        events_a = await predictor.process(_make_sample(service="svc-a", cpu=84.0, memory=50.0, latency=100.0, ts=ts))
+        assert not any(e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH for e in events_a)
+
+        # svc-b: also suppressed (its own cooldown active from warmup)
+        events_b = await predictor.process(_make_sample(service="svc-b", cpu=84.0, memory=50.0, latency=100.0, ts=ts))
+        assert not any(e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH for e in events_b)
+
+        # But svc-c (never seen) should fire
+        for i in range(25):
+            cpu = 72.0 + i * 0.48
+            await predictor.process(_make_sample(service="svc-c", cpu=cpu, memory=50.0, latency=100.0, ts=ts))
+        # svc-c breach already fired during warmup; next call suppressed
+        events_c = await predictor.process(_make_sample(service="svc-c", cpu=84.0, memory=50.0, latency=100.0, ts=ts))
+        assert not any(e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH for e in events_c)
+
+    @pytest.mark.asyncio
+    async def test_cooldown_expiration_allows_new_prediction(self) -> None:
+        """After cooldown expires, same prediction type should fire again."""
+        predictor = MetricPredictor(
+            cpu_threshold=85.0,
+            memory_threshold=90.0,
+            cooldown_seconds=30.0,
+        )
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        # Feed rising CPU — breach fires during warmup
+        for i in range(25):
+            await predictor.process(_make_sample(cpu=72.0 + i * 0.48, memory=50.0, latency=100.0, ts=t0))
+
+        # Same timestamp — suppressed (cooldown active from warmup)
+        events2 = await predictor.process(_make_sample(cpu=84.0, memory=50.0, latency=100.0, ts=t0))
+        assert not any(e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH for e in events2)
+
+        # 60s later — cooldown expired, should fire again
+        t1 = t0.replace(minute=t0.minute + 1)
+        events3 = await predictor.process(_make_sample(cpu=84.0, memory=50.0, latency=100.0, ts=t1))
+        assert any(e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH for e in events3)
+
+    @pytest.mark.asyncio
+    async def test_cooldown_disabled(self) -> None:
+        """When cooldown_seconds=0, no suppression occurs."""
+        predictor = MetricPredictor(
+            cpu_threshold=85.0,
+            memory_threshold=90.0,
+            cooldown_seconds=0.0,
+        )
+        ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        for i in range(25):
+            await predictor.process(_make_sample(cpu=72.0 + i * 0.48, memory=50.0, latency=100.0, ts=ts))
+
+        # First call
+        events1 = await predictor.process(_make_sample(cpu=84.0, memory=50.0, latency=100.0, ts=ts))
+        assert any(e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH for e in events1)
+
+        # Second call — no cooldown, should also emit
+        events2 = await predictor.process(_make_sample(cpu=84.0, memory=50.0, latency=100.0, ts=ts))
+        assert any(e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH for e in events2)
+
+    @pytest.mark.asyncio
+    async def test_reset_cooldown(self) -> None:
+        predictor = MetricPredictor(cooldown_seconds=30.0)
+        ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        # Feed rising CPU — breach fires during warmup
+        for i in range(25):
+            await predictor.process(_make_sample(cpu=72.0 + i * 0.48, memory=50.0, latency=100.0, ts=ts))
+
+        # Suppressed (cooldown active from warmup)
+        events2 = await predictor.process(_make_sample(cpu=84.0, memory=50.0, latency=100.0, ts=ts))
+        assert not any(e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH for e in events2)
+
+        # Reset cooldown
+        await predictor.reset_cooldown()
+
+        # Should fire again
+        events3 = await predictor.process(_make_sample(cpu=84.0, memory=50.0, latency=100.0, ts=ts))
+        assert any(e.prediction_type == MetricPredictionType.PREDICTED_CPU_BREACH for e in events3)

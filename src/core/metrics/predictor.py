@@ -118,6 +118,47 @@ class RollingWindow:
         return list(self.values)[-1] + slope * steps
 
 
+class _PredictionCooldown:
+    """Lightweight in-memory cooldown tracker per (service, prediction_type).
+
+    Suppresses repeated identical prediction events for a configurable duration
+    (seconds) or sample count. Uses a simple dict — no external dependencies.
+    """
+
+    def __init__(self, seconds: float = 30.0, samples: int = 0) -> None:
+        self._seconds = seconds
+        self._samples = samples
+        # Key: (service, prediction_type) -> (last_timestamp, last_sample_count)
+        self._last: dict[tuple[str, str], tuple[datetime, int]] = {}
+        self._sample_counter: int = 0
+
+    def _key(self, service: str, pred_type: str) -> tuple[str, str]:
+        return (service, pred_type)
+
+    def is_cooldown_active(self, service: str, pred_type: str, now: datetime) -> bool:
+        """Return True if the prediction is still within cooldown (should be suppressed)."""
+        key = self._key(service, pred_type)
+        if key not in self._last:
+            return False
+        last_ts, last_count = self._last[key]
+        elapsed = (now - last_ts).total_seconds()
+        if self._seconds > 0 and elapsed < self._seconds:
+            return True
+        if self._samples > 0 and (self._sample_counter - last_count) < self._samples:
+            return True
+        return False
+
+    def record(self, service: str, pred_type: str, now: datetime) -> None:
+        """Record that a prediction was emitted."""
+        key = self._key(service, pred_type)
+        self._last[key] = (now, self._sample_counter)
+        self._sample_counter += 1
+
+    def reset(self) -> None:
+        self._last.clear()
+        self._sample_counter = 0
+
+
 class MetricPredictor:
     """Statistical metric predictor that processes MetricSample objects.
 
@@ -127,12 +168,17 @@ class MetricPredictor:
       3. Runs linear trend forecasting against configured thresholds.
       4. Evaluates OOM risk heuristic.
 
+    Duplicate prediction events are suppressed via a per-service/per-type cooldown
+    (default 30 seconds).
+
     Args:
         window_size:          Max samples per metric series per service.
         cpu_threshold:        CPU % threshold for breach prediction.
         memory_threshold:     Memory % threshold for breach prediction.
         anomaly_z_threshold:  Z-score magnitude to trigger anomaly (default 2.5).
         rules:                Custom PredictionRule instances; defaults to built-ins.
+        cooldown_seconds:     Seconds to suppress duplicate predictions (default 30).
+        cooldown_samples:     Sample count to suppress duplicates (0 = disabled).
     """
 
     def __init__(
@@ -142,6 +188,8 @@ class MetricPredictor:
         memory_threshold: float = 90.0,
         anomaly_z_threshold: float = 2.5,
         rules: tuple[PredictionRule, ...] | None = None,
+        cooldown_seconds: float = 30.0,
+        cooldown_samples: int = 0,
     ) -> None:
         self._window_size = window_size
         self._cpu_threshold = cpu_threshold
@@ -151,6 +199,9 @@ class MetricPredictor:
         # Per-service: {service_name: {"cpu": RollingWindow, "memory": ..., "latency": ...}}
         self._windows: dict[str, dict[str, RollingWindow]] = {}
         self._lock = asyncio.Lock()
+        self._cooldown = _PredictionCooldown(
+            seconds=cooldown_seconds, samples=cooldown_samples
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -191,7 +242,31 @@ class MetricPredictor:
             # 4. Custom rules
             events.extend(self._evaluate_rules(svc, sample, now, windows))
 
+            # 5. Apply cooldown — suppress duplicate predictions
+            events = self._apply_cooldown(svc, events, now)
+
             return events
+
+    # ------------------------------------------------------------------
+    # Internal: cooldown
+    # ------------------------------------------------------------------
+
+    def _apply_cooldown(
+        self,
+        svc: str,
+        events: list[MetricPredictionEvent],
+        now: datetime,
+    ) -> list[MetricPredictionEvent]:
+        """Filter out events still within cooldown; record emitted ones."""
+        result: list[MetricPredictionEvent] = []
+        for event in events:
+            if self._cooldown.is_cooldown_active(
+                svc, event.prediction_type.value, now
+            ):
+                continue  # suppressed
+            result.append(event)
+            self._cooldown.record(svc, event.prediction_type.value, now)
+        return result
 
     async def reset_service(self, service_name: str) -> None:
         """Clear all rolling windows for a specific service."""
@@ -202,6 +277,11 @@ class MetricPredictor:
         """Clear all rolling windows."""
         async with self._lock:
             self._windows.clear()
+
+    async def reset_cooldown(self) -> None:
+        """Clear all cooldown state."""
+        async with self._lock:
+            self._cooldown.reset()
 
     @property
     def cpu_threshold(self) -> float:

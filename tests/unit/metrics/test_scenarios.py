@@ -290,9 +290,9 @@ class TestEngineLifecycle:
         engine = ScenarioEngine(scenarios=["steady_cpu_growth"], services=["svc"])
         for _ in range(20):
             engine.advance("svc")
-        assert engine.get_step() == 20
+        assert engine.get_step("svc") == 20
         engine.reset()
-        assert engine.get_step() == 0
+        assert engine.get_step("svc") == 0
 
     def test_multiple_services(self) -> None:
         engine = ScenarioEngine(
@@ -333,3 +333,93 @@ class TestEngineLifecycle:
             # Both CPU and memory should rise
             assert 5.0 <= state.cpu <= 95.0
             assert 30.0 <= state.memory <= 95.0
+
+
+# ---------------------------------------------------------------------------
+# Per-service step isolation tests
+# ---------------------------------------------------------------------------
+
+class TestPerServiceStepIsolation:
+    """Each service must have independent step progression."""
+
+    def test_steps_independent_per_service(self) -> None:
+        """svc-a and svc-b should have independent step counters."""
+        engine = ScenarioEngine(
+            scenarios=["steady_cpu_growth"],
+            services=["svc-a", "svc-b"],
+        )
+        # Advance svc-a 10 times
+        for _ in range(10):
+            engine.advance("svc-a")
+        assert engine.get_step("svc-a") == 10
+        assert engine.get_step("svc-b") == 0
+
+        # Advance svc-b 5 times
+        for _ in range(5):
+            engine.advance("svc-b")
+        assert engine.get_step("svc-a") == 10
+        assert engine.get_step("svc-b") == 5
+
+    def test_interleaved_advances_produce_identical_states(self) -> None:
+        """Interleaving advances should produce same results as sequential."""
+        engine_seq = ScenarioEngine(
+            scenarios=["steady_cpu_growth"],
+            services=["svc-a", "svc-b"],
+        )
+        engine_inter = ScenarioEngine(
+            scenarios=["steady_cpu_growth"],
+            services=["svc-a", "svc-b"],
+        )
+
+        # Sequential: advance svc-a 5 times, then svc-b 5 times
+        states_seq = {"svc-a": [], "svc-b": []}
+        for _ in range(5):
+            s = engine_seq.advance("svc-a")
+            states_seq["svc-a"].append(s.cpu)
+        for _ in range(5):
+            s = engine_seq.advance("svc-b")
+            states_seq["svc-b"].append(s.cpu)
+
+        # Interleaved: alternate between svc-a and svc-b
+        states_inter = {"svc-a": [], "svc-b": []}
+        for _ in range(5):
+            s = engine_inter.advance("svc-a")
+            states_inter["svc-a"].append(s.cpu)
+            s = engine_inter.advance("svc-b")
+            states_inter["svc-b"].append(s.cpu)
+
+        # Both services should produce identical CPU values regardless of interleaving
+        assert states_seq["svc-a"] == states_inter["svc-a"]
+        assert states_seq["svc-b"] == states_inter["svc-b"]
+
+    def test_reset_clears_per_service_steps(self) -> None:
+        engine = ScenarioEngine(
+            scenarios=["steady_cpu_growth"],
+            services=["svc-a", "svc-b"],
+        )
+        for _ in range(5):
+            engine.advance("svc-a")
+        for _ in range(3):
+            engine.advance("svc-b")
+        engine.reset()
+        assert engine.get_step("svc-a") == 0
+        assert engine.get_step("svc-b") == 0
+
+    def test_get_step_without_service_returns_max(self) -> None:
+        engine = ScenarioEngine(
+            scenarios=["steady_cpu_growth"],
+            services=["svc-a", "svc-b"],
+        )
+        for _ in range(10):
+            engine.advance("svc-a")
+        for _ in range(5):
+            engine.advance("svc-b")
+        # get_step() without args returns max across all services
+        assert engine.get_step() == 10
+
+    def test_get_step_without_service_empty(self) -> None:
+        engine = ScenarioEngine(
+            scenarios=["steady_cpu_growth"],
+            services=["svc-a"],
+        )
+        assert engine.get_step() == 0
