@@ -31,7 +31,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List
 
-from src.core.metrics.scenarios import ScenarioEngine
+from src.core.metrics.scenarios import ScenarioEngine, DEFAULT_SERVICE_SCENARIOS
 
 
 def generate_demo_metrics(
@@ -59,10 +59,21 @@ def generate_demo_metrics(
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
-    engine = ScenarioEngine(scenarios=scenarios, services=services)
     results: Dict[str, Path] = {}
 
-    for svc in engine._services:
+    all_services = services or [
+        "auth-service", "payment-service", "gateway",
+        "inventory-service", "user-api", "order-processor",
+    ]
+
+    for svc in all_services:
+        # Determine scenario for this service (each gets its own engine)
+        if scenarios:
+            svc_scenarios = list(scenarios)
+        else:
+            svc_scenarios = DEFAULT_SERVICE_SCENARIOS.get(svc, ["steady_cpu_growth"])
+
+        engine = ScenarioEngine(scenarios=svc_scenarios, services=[svc])
         csv_file = out_path / f"{svc}.csv"
         with open(csv_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)

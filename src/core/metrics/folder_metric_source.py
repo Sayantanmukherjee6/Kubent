@@ -89,6 +89,13 @@ class FolderMetricSource(BaseMetricSource):
         # Initial scan — record offsets for all existing *.csv files
         self._scan_files()
 
+        if not self._offsets:
+            logger.warning(
+                "No *.csv files found in %s. FolderMetricSource will poll but emit no samples. "
+                "Generate metrics with: python generate_test_metrics.py --output-dir %s",
+                self._folder_path, self._folder_path,
+            )
+
     async def stop(self) -> None:
         """Stop polling and reset internal state for clean restart."""
         self._running = False

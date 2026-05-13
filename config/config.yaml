@@ -10,8 +10,8 @@
 # =============================================================================
 
 log_source:
-  type: mock                        # "mock" or "folder"
-  folder_path: mocks/logs           # base directory for mock / folder logs
+  type: folder                        # "mock" or "folder"
+  folder_path: /Users/anonymous/Documents/projects/hackathon/logs_test          # base directory for mock / folder logs
 
 mock:
   log_count: 50                     # initial batch size for mock logs
@@ -37,8 +37,8 @@ predictor:
 
 metrics:
   source:
-    type: mock                      # "mock" or "folder"
-    folder_path: ./demo_metrics     # directory for CSV metric files
+    type: folder                      # "mock" or "folder"
+    folder_path: /Users/anonymous/Documents/projects/hackathon/logs_test     # directory for CSV metric files
   thresholds:
     cpu_percent: 85                 # alert when CPU exceeds this %
     memory_percent: 90              # alert when memory exceeds this %
